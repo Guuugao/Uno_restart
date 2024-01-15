@@ -1,0 +1,58 @@
+enum enumUnoCardColor {
+    RED, YELLOW, BLUE, GREEN
+}
+
+enum enumUnoCardType {
+    N1, N2, N3, N4, N5, N6, N7, N8, N9, N0, SKIP, REVERSE, WILD, ADD2, ADD4
+}
+
+enum enumGamePlayerStatus {
+    # 当前回合与下一回合均不是玩家出牌
+    watching
+    # 玩家当前回合出牌
+    onTurns
+    # 玩家下回合出牌
+    nextTurns
+    # 如果玩家出卡错误，则返回这个消息要求玩家重新出卡
+    retryOnTurns
+    gameOverFailed
+    gameOverSuccess
+}
+
+##### 游戏相关
+
+type gameCard {
+    cardType: enumUnoCardType!
+    cardColor: enumUnoCardColor!
+}
+
+# 实体类先用上面这个, 应该是一样的
+input gameCardInput {
+    cardType: enumUnoCardType!
+    cardColor: enumUnoCardColor!
+}
+
+type gamePlayerInfo {
+    who: playerInfo!
+    restCardCount: Int!
+    cards: [gameCard]!
+}
+
+type gameTurnsFeedback {
+    yourStatus: enumGamePlayerStatus!
+    othersStatus: [gamePlayerState!]!
+    playerGameInfo: [gamePlayerInfo]!
+    lastCard: gameCard
+    message: String
+}
+
+# 游戏内玩家状态
+type gamePlayerState {
+    playerId: ID!
+    status: enumGamePlayerStatus!
+}
+
+type gameSettings {
+    players: [playerInfo]!
+    roomInfo: gameRoomInfo
+}

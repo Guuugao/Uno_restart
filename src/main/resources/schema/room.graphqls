@@ -1,0 +1,34 @@
+##### 游戏房间
+
+type gameRoomFeedback {
+    success: Boolean!
+    isInsideRoom: Boolean!
+    self: roomPlayerState
+    room: gameRoomInfo
+    message: String
+}
+
+type roomPlayerState {
+    isReady: Boolean!
+    player: playerInfo!
+}
+
+type gameRoomPage {
+    maxPageCount: Int!
+    currentPageCount: Int!
+    pageContent: [gameRoomInfo]!
+}
+
+# 游戏房间信息
+# 可以不指定房主, 玩家全部退出即删除房间
+type gameRoomInfo {
+    roomId: ID!
+    roomName: String!
+    # 是否正在进行游戏
+    isPlaying: Boolean!
+    privateRoom: Boolean!
+    requirePassword: Boolean!
+    maxPlayerCount: Int!
+    currentPlayerCount: Int!
+    joinedPlayer: [roomPlayerState]!
+}

@@ -1,0 +1,45 @@
+# 查询
+type Query {
+    # 通过玩家名称查询用户, 未指定名称代表查询自己, 可以返回空
+    queryPlayerByName(playerName: String) : [playerInfo]!
+    # 通过玩家ID查询用户, 未指定名称代表查询自己, 可以返回空
+    queryPlayerByID(playerId: ID) : playerInfo
+    # 根据房间名称查找指定游戏房间, 可以返回空
+    queryRoomByName(roomName: String!) : [gameRoomInfo]!
+    # 根据房间id查找指定游戏房间, 可以返回空
+    queryRoomByID(roomId: ID!): gameRoomInfo
+    # 获取公开房间列表, length: 每页房间数量, 返回[beginPage, endPage)页
+    # 默认返回3页, 每页16个房间信息, 结果可以为空
+    availableRooms(length: Int = 16, beginPage: Int = 1, endPage: Int = 4) : [gameRoomPage]!
+    # 查询当前加入的房间
+    currentJoinedRoom: gameRoomFeedback!
+}
+
+# 变更
+type Mutation {
+    # 用户登录相关
+    playerLogin(playerName: String!, password: String!) : playerLoginFeedback!
+    playerRegister(playerName: String!, password: String!) : playerLoginFeedback!
+    playerRelogin(renewKey: String!) : playerLoginFeedback! # 这个的作用和参数还需要讨论一下
+
+    # 用户信息操作相关
+    playerPasswordModify(oldPassword: String!, newPassword: String!) : playerInfoEditFeedback!
+    playerNameModify(playerName: String!) : playerInfoEditFeedback!
+    playerAvatarModify(avatarName: String!) : playerInfoEditFeedback! # 这个干嘛的? 修改头像吗
+
+    # 游戏房间相关
+    roomCreate(roomName: String!, maxPlayer: Int = 4, password: String, private: Boolean = false) : gameRoomFeedback!
+    roomJoin(roomId: ID!, password: String) : gameRoomFeedback!
+    roomExit(roomId: ID!) : gameRoomFeedback!
+    roomPlayerReady(roomId: ID!) : gameRoomFeedback!
+    roomPlayerUnready(roomId: ID!) : gameRoomFeedback!
+
+    # 游玩内容
+    gameSendCard(roomId: ID!, card: gameCardInput!): Boolean
+}
+
+# 订阅
+type Subscription {
+    roomWaitStart(roomId: ID!) : gameSettings
+    gameWaitNextReaction(roomId: ID!) : gameTurnsFeedback
+}
