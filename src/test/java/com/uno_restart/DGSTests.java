@@ -1,9 +1,7 @@
 package com.uno_restart;
 
 import com.netflix.graphql.dgs.DgsQueryExecutor;
-import com.netflix.graphql.dgs.autoconfig.DgsAutoConfiguration;
 import com.netflix.graphql.dgs.client.codegen.GraphQLQueryRequest;
-import com.uno_restart.dataFetcher.PlayerDataFetcher;
 import com.uno_restart.generated.client.PlayerLoginGraphQLQuery;
 import com.uno_restart.generated.client.PlayerLoginProjectionRoot;
 import org.junit.jupiter.api.Test;

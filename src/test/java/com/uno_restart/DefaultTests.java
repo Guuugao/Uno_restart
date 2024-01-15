@@ -1,7 +1,6 @@
 package com.uno_restart;
 
 import cn.dev33.satoken.stp.StpUtil;
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.uno_restart.service.PlayerInfoService;
 import com.uno_restart.types.player.PlayerContact;
 import com.uno_restart.types.player.PlayerHistory;
@@ -45,7 +44,5 @@ class DefaultTests {
 
     @Test
     void wrapperDemo() {
-        Optional<PlayerInfo> player = service.getOptById("playerName");
-        System.out.println(player.get());
     }
 }
