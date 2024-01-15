@@ -4,8 +4,6 @@
 type playerInfo {
     # 玩家名称
     playerName: String!
-    # 唯一标识一个玩家
-    playerID: ID!
     password: String!
     avatarPath: String!
     # 这里为了避免跨平台导致的解析错误，我们统一使用String传递上次登录时间
@@ -13,7 +11,7 @@ type playerInfo {
     # 如果authcation过期了却没有被renew，则代表玩家下线
     online: Boolean!
     contact: playerContact
-    gameStatiscs: playerHistoryPlayInfo!
+    history: playerHistory!
 }
 
 # 玩家的联络方式
@@ -23,7 +21,7 @@ type playerContact {
 }
 
 # 玩家的战绩数据
-type playerHistoryPlayInfo {
+type playerHistory {
     # 胜利次数
     winTimes: Int!
     # 非胜利次数
@@ -32,20 +30,8 @@ type playerHistoryPlayInfo {
     totalGames: Int!
 }
 
-type playerInfoEditFeedback {
-    success: Boolean!
-    message: String
-}
-
-# 用户登录
-type playerLoginFeedback {
-    success: Boolean!
-    authcation: ID!
-    message: String
-}
-
-# 用户注册
-type playerRegisterFeedback {
+# 用户登录/注册/修改个人信息等请求的反馈
+type playerInfoFeedback {
     success: Boolean!
     message: String
 }

@@ -14,10 +14,8 @@ import org.jetbrains.annotations.NotNull;
 @RequiredArgsConstructor
 @TableName(value = "playerinfo", autoResultMap = true)
 public class PlayerInfo {
-    // TODO 即便名称和密码一样, 也会成功注册, 期望是用户名或密码其一不一样即可
-    @TableId(type = IdType.ASSIGN_UUID)
-    private String playerID;
     @NotNull
+    @TableId(type = IdType.INPUT)
     private String playerName;
     @NotNull
     private String password;
@@ -30,6 +28,6 @@ public class PlayerInfo {
 
     @TableField(typeHandler = JacksonTypeHandler.class)
     private PlayerContact contact;
-    @TableField(typeHandler = JacksonTypeHandler.class)
+    @TableField(typeHandler = JacksonTypeHandler.class, fill = FieldFill.INSERT)
     private PlayerHistory history;
 }

@@ -10,5 +10,4 @@ import org.springframework.stereotype.Service;
 public class PlayerInfoService
         extends ServiceImpl<PlayerInfoMapper, PlayerInfo>
         implements IPlayerInfoService {
-
 }

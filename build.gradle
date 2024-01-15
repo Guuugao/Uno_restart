@@ -34,7 +34,10 @@ repositories {
 dependencies {
     /* DGS */
     implementation "com.netflix.graphql.dgs:graphql-dgs-spring-boot-starter"
-    /* druid数据库连接池 */
+    // DGS 测试
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'com.netflix.graphql.dgs:graphql-dgs-client:8.2.1'
+    /* druid 数据库连接池 */
     implementation 'com.alibaba:druid-spring-boot-starter:1.2.21'
     /* Mybits plus */
     implementation 'com.baomidou:mybatis-plus-boot-starter:3.5.5'
@@ -53,10 +56,14 @@ dependencies {
 
 generateJava{
     schemaPaths = ["${projectDir}/src/main/resources/schema"] // List of directories containing schema files
-    packageName = 'com.example.uno_restart.dataFetcher' // The package name to use to generate sources
+    packageName = 'com.uno_restart.generated' // The package name to use to generate sources
     generateClient = true // Enable generating the type safe query API
 }
 
 tasks.named('test') {
+    useJUnitPlatform()
+}
+
+test {
     useJUnitPlatform()
 }

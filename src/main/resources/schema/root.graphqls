@@ -18,14 +18,14 @@ type Query {
 # 变更
 type Mutation {
     # 用户登录相关
-    playerLogin(playerName: String!, password: String!) : playerLoginFeedback!
-    playerRegister(playerName: String!, password: String!) : playerLoginFeedback!
-    playerRelogin(renewKey: String!) : playerLoginFeedback! # 这个的作用和参数还需要讨论一下
+    playerLogout: playerInfoFeedback!
+    playerLogin(playerName: String!, password: String!) : playerInfoFeedback!
+    playerRegister(playerName: String!, password: String!) : playerInfoFeedback!
 
     # 用户信息操作相关
-    playerPasswordModify(oldPassword: String!, newPassword: String!) : playerInfoEditFeedback!
-    playerNameModify(playerName: String!) : playerInfoEditFeedback!
-    playerAvatarModify(avatarName: String!) : playerInfoEditFeedback! # 这个干嘛的? 修改头像吗
+    playerPasswordModify(oldPassword: String!, newPassword: String!) : playerInfoFeedback!
+    playerNameModify(newPlayerName: String!) : playerInfoFeedback!
+    playerAvatarModify(newAvatarName: String!) : playerInfoFeedback! # TODO 使用文件上传实现
 
     # 游戏房间相关
     roomCreate(roomName: String!, maxPlayer: Int = 4, password: String, private: Boolean = false) : gameRoomFeedback!
