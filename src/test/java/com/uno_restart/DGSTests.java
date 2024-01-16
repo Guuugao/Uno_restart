@@ -45,7 +45,7 @@ public class DGSTests {
         login("admin", "admin0000");
 
         @Language("GraphQL") String mutation = "mutation ($avatar: Upload!) { playerAvatarModify(avatar: $avatar) { success message avatarPath }}";
-        Map<String, Object> map = new HashMap<String, Object>() {{
+        Map<String, Object> map = new HashMap<>() {{
             put("avatar", new MockMultipartFile("test", "test.png", "image/jpeg",
                     new FileInputStream("C:\\Users\\TIME LEAP MACHINE\\Pictures\\插画\\正经\\米山舞\\64981847_p0.jpg")));
         }};
@@ -54,7 +54,7 @@ public class DGSTests {
                 mutation,
                 "$.data.playerAvatarModify[*]",
                 map,
-                new TypeRef<List<String>>() {
+                new TypeRef<>() {
                 }
         );
 

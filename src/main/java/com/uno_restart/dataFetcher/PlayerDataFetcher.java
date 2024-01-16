@@ -28,7 +28,7 @@ public class PlayerDataFetcher {
     private static final String uploadpath = "./uploads/";
     private static final List<String> allowedAvatarTypes = new ArrayList<>(
             Arrays.asList("image/jpeg", "image/png", "image/gif"));
-    private static long allowedAvatarSize = 3 * 1024 * 1024;
+    private static final long allowedAvatarSize = 3 * 1024 * 1024;
 
 
     @DgsMutation
