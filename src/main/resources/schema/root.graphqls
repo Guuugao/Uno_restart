@@ -1,3 +1,5 @@
+scalar Upload
+
 # 查询
 type Query {
     # 通过玩家名称查询用户, 未指定名称代表查询自己, 可以返回空
@@ -25,7 +27,7 @@ type Mutation {
     # 用户信息操作相关
     playerPasswordModify(oldPassword: String!, newPassword: String!) : playerInfoFeedback!
     playerNameModify(newPlayerName: String!) : playerInfoFeedback!
-    playerAvatarModify(newAvatarName: String!) : playerInfoFeedback! # TODO 使用文件上传实现
+    playerAvatarModify(avatar: Upload!) : playerAvatarFeedback!
 
     # 游戏房间相关
     roomCreate(roomName: String!, maxPlayer: Int = 4, password: String, private: Boolean = false) : gameRoomFeedback!

@@ -35,3 +35,9 @@ type playerInfoFeedback {
     success: Boolean!
     message: String
 }
+
+type playerAvatarFeedback {
+    success: Boolean!
+    message: String
+    avatarPath: String
+}

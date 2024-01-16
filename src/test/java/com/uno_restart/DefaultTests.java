@@ -17,13 +17,13 @@ class DefaultTests {
     PlayerInfoService service;
 
     @Test
-    void selectListDemo() {
+    void select() {
         PlayerInfo playerInfo = service.getById("admin");
         System.out.println(playerInfo);
     }
 
     @Test
-    void insertDemo() {
+    void insert() {
         PlayerInfo playerInfo = new PlayerInfo("demo", "root")
                 .setContact(new PlayerContact("fackemail@uno.com", "12345678910"))
                 .setHistory(new PlayerHistory(1, 3));
@@ -40,9 +40,5 @@ class DefaultTests {
         System.out.println(StpUtil.getTokenTimeout(StpUtil.getTokenValue()));
         System.out.println(StpUtil.getTokenInfo());
         StpUtil.logout("admin");
-    }
-
-    @Test
-    void wrapperDemo() {
     }
 }

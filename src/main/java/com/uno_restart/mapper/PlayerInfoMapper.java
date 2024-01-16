@@ -13,4 +13,7 @@ public interface PlayerInfoMapper extends BaseMapper<PlayerInfo> {
     void updatePassword(String newPassword, String playerName);
     @Update("update playerinfo set playerName = #{newPlayerName} where playerName = #{playerName}")
     void updatePlayerName(String newPlayerName, String playerName);
+
+    @Update("update playerinfo set avatarPath = #{newAvatarpath} where playerName = #{playerName}")
+    void updateAvatarpath(String newAvatarpath, String playerName);
 }
