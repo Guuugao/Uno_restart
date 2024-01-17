@@ -1,12 +1,12 @@
-enum enumUnoCardColor {
+enum EnumUnoCardColor {
     RED, YELLOW, BLUE, GREEN
 }
 
-enum enumUnoCardType {
+enum EnumUnoCardType {
     N1, N2, N3, N4, N5, N6, N7, N8, N9, N0, SKIP, REVERSE, WILD, ADD2, ADD4
 }
 
-enum enumGamePlayerStatus {
+enum EnumGamePlayerStatus {
     # 当前回合与下一回合均不是玩家出牌
     watching
     # 玩家当前回合出牌
@@ -21,38 +21,40 @@ enum enumGamePlayerStatus {
 
 ##### 游戏相关
 
-type gameCard {
-    cardType: enumUnoCardType!
-    cardColor: enumUnoCardColor!
+type GameCard {
+    cardType: EnumUnoCardType!
+    cardColor: EnumUnoCardColor!
 }
 
 # 实体类先用上面这个, 应该是一样的
-input gameCardInput {
-    cardType: enumUnoCardType!
-    cardColor: enumUnoCardColor!
+input GameCardInput {
+    cardType: EnumUnoCardType!
+    cardColor: EnumUnoCardColor!
 }
 
-type gamePlayerInfo {
-    who: playerInfo!
+type GamePlayerInfo {
+    who: PlayerInfo!
     restCardCount: Int!
-    cards: [gameCard]!
+    cards: [GameCard]!
 }
 
-type gameTurnsFeedback {
-    yourStatus: enumGamePlayerStatus!
-    othersStatus: [gamePlayerState!]!
-    playerGameInfo: [gamePlayerInfo]!
-    lastCard: gameCard
+type GameTurnsFeedback {
+    yourStatus: EnumGamePlayerStatus!
+    othersStatus: [GamePlayerState!]!
+    playerGameInfo: [GamePlayerInfo]!
+    lastCard: GameCard
+
+    success: Boolean!
     message: String
 }
 
 # 游戏内玩家状态
-type gamePlayerState {
+type GamePlayerState {
     playerId: ID!
-    status: enumGamePlayerStatus!
+    status: EnumGamePlayerStatus!
 }
 
-type gameSettings {
-    players: [playerInfo]!
-    roomInfo: gameRoomInfo
+type GameSettings {
+    players: [PlayerInfo]!
+    roomInfo: GameRoomInfo
 }

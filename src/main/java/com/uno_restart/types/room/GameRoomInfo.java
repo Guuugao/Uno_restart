@@ -9,6 +9,7 @@ import java.util.ArrayList;
 public class GameRoomInfo {
     @NotNull
     private String roomId;
+
     @NotNull
     private String roomName;
     @NotNull

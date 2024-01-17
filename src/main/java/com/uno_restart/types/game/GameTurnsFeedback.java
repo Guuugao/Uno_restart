@@ -1,14 +1,17 @@
 package com.uno_restart.types.game;
 
-import lombok.AllArgsConstructor;
+import com.uno_restart.types.interfaces_enum.EnumGamePlayerStatus;
 import lombok.Data;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 
 @Data
-@AllArgsConstructor
 public class GameTurnsFeedback {
+    @NotNull
+    private Boolean success;
+    private String message;
+
     @NotNull
     private EnumGamePlayerStatus yourStatus;
     @NotNull
@@ -16,5 +19,4 @@ public class GameTurnsFeedback {
     @NotNull
     private ArrayList<GamePlayerInfo> playerGameInfo;
     private GameCard lastCard;
-    private String message;
 }

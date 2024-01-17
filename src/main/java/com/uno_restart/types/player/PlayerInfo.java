@@ -17,10 +17,11 @@ public class PlayerInfo {
     @NotNull
     @TableId(type = IdType.INPUT)
     private String playerName;
+
     @NotNull
     private String password;
     @TableField(fill = FieldFill.INSERT)
-    private String avatarpath;
+    private String avatarPath;
     @TableField(fill = FieldFill.INSERT_UPDATE)
     private String lastLogin;
     @TableField(fill = FieldFill.INSERT)

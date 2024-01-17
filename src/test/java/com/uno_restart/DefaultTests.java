@@ -22,6 +22,11 @@ class DefaultTests {
     }
 
     @Test
+    void selectPage(){
+
+    }
+
+    @Test
     void insert() {
         PlayerInfo playerInfo = new PlayerInfo("demo", "root")
                 .setContact(new PlayerContact("fackemail@uno.com", "12345678910"))

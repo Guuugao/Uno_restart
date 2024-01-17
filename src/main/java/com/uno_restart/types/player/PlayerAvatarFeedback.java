@@ -6,7 +6,7 @@ import org.jetbrains.annotations.NotNull;
 @Data
 public class PlayerAvatarFeedback {
     @NotNull
-    Boolean success;
-    String message;
+    private Boolean success;
+    private String message;
     String avatarPath;
 }

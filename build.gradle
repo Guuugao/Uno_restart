@@ -36,7 +36,8 @@ dependencies {
     implementation "com.netflix.graphql.dgs:graphql-dgs-spring-boot-starter"
     // DGS 测试
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
-    testImplementation 'com.netflix.graphql.dgs:graphql-dgs-client:8.2.1'
+    // DGS 分页
+    implementation 'com.netflix.graphql.dgs:graphql-dgs-pagination:8.2.2'
     /* druid 数据库连接池 */
     implementation 'com.alibaba:druid-spring-boot-starter:1.2.21'
     /* Mybits plus */

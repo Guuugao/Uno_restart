@@ -47,7 +47,7 @@ public class DGSTests {
         @Language("GraphQL") String mutation = "mutation ($avatar: Upload!) { playerAvatarModify(avatar: $avatar) { success message avatarPath }}";
         Map<String, Object> map = new HashMap<>() {{
             put("avatar", new MockMultipartFile("test", "test.png", "image/jpeg",
-                    new FileInputStream("C:\\Users\\TIME LEAP MACHINE\\Pictures\\插画\\正经\\米山舞\\64981847_p0.jpg")));
+                    new FileInputStream("C:\\Users\\TIME LEAP MACHINE\\Pictures\\插画\\正经\\モ誰 2023-02-23\\75日目,マキマ2022-07-0199435243_p0.jpg")));
         }};
 
         List<String> feedback = dgsQueryExecutor.executeAndExtractJsonPathAsObject(

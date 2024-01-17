@@ -1,0 +1,53 @@
+scalar Upload
+
+# TODO 可以使用接口改为通用分页
+#interface Node {
+#    ID: String!
+#}
+#
+#type PageInfo {
+#    startCursor: String!
+#    endCursor: String!
+#    hasNextPage: Boolean!
+#}
+#
+#type Edge {
+#    cursor: String!
+#    node: Node!
+#}
+#
+#type Connection {
+#    edges: [Edge!]!
+#    pageInfo: PageInfo!
+#    totalCount: Int!
+#}
+
+
+type PageInfo {
+    startCursor: String!
+    endCursor: String!
+    hasPreviousPage: Boolean!
+    hasNextPage: Boolean!
+}
+
+# 玩家信息分页
+type PlayerEdge {
+    node: PlayerInfo!
+    cursor: String!
+}
+
+type PlayerConnection {
+    edges: [PlayerEdge!]!
+    pageInfo: PageInfo!
+}
+
+# 游戏房间分页
+type GameRoomEdge {
+    node: GameRoomInfo!
+    cursor: String!
+}
+
+type GameRoomConnection {
+    edges: [GameRoomEdge!]!
+    pageInfo: PageInfo!
+}

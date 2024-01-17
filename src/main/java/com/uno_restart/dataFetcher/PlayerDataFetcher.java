@@ -3,10 +3,12 @@ package com.uno_restart.dataFetcher;
 import cn.dev33.satoken.stp.StpUtil;
 import com.netflix.graphql.dgs.DgsComponent;
 import com.netflix.graphql.dgs.DgsMutation;
+import com.netflix.graphql.dgs.DgsQuery;
 import com.uno_restart.service.PlayerInfoService;
 import com.uno_restart.types.player.PlayerAvatarFeedback;
 import com.uno_restart.types.player.PlayerInfo;
 import com.uno_restart.types.player.PlayerInfoFeedback;
+import graphql.relay.*;
 import graphql.schema.DataFetchingEnvironment;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
@@ -16,20 +18,76 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 @DgsComponent
 public class PlayerDataFetcher {
     @Autowired
     PlayerInfoService service;
-    private static final String uploadpath = "./uploads/";
+    @Autowired
+    Base64.Encoder encoder;
+    private static final String uploadPath = "./uploads/";
     private static final List<String> allowedAvatarTypes = new ArrayList<>(
             Arrays.asList("image/jpeg", "image/png", "image/gif"));
     private static final long allowedAvatarSize = 3 * 1024 * 1024;
 
+
+    @DgsQuery
+    public PlayerInfo me() {
+        StpUtil.checkLogin();
+        return service.getById(StpUtil.getLoginIdAsString());
+    }
+
+    @DgsQuery
+    public Connection<PlayerInfo> queryPlayerByName(String playerName, Integer first, String after) {
+        StpUtil.checkLogin();
+
+        first = first == null ? 10 : first; // 默认一页10条数据
+        List<PlayerInfo> playerInfos = service.selectPlayerInfoPage(playerName, first + 2, after);
+
+        boolean hasPreviousPage = false;
+        boolean hasNextPage = false;
+        if (!playerInfos.isEmpty()) { // 去除首尾多余节点, 还有数据
+            // 若存在前驱页, 则第一条数据的playerName与解码后的after相等
+            // 此时设置hasPreviousPage = true, 同时删除该前驱节点
+            String previousNodeCursor = encoder.encodeToString(
+                    playerInfos.get(0).getPlayerName().getBytes(StandardCharsets.UTF_8));
+            if (previousNodeCursor.equals(after)) {
+                hasPreviousPage = true;
+                playerInfos.remove(0);
+            }
+            // 若数据条数大于给定大小(first), 代表包含多余节点, 即存在后驱页
+            hasNextPage = playerInfos.size() > first;
+        }
+
+        List<Edge<PlayerInfo>> edges = playerInfos.stream()
+                .limit(first)
+                .map(playerInfo -> new DefaultEdge<>(playerInfo,
+                        new DefaultConnectionCursor(
+                                encoder.encodeToString(
+                                        playerInfo.getPlayerName().getBytes(
+                                                StandardCharsets.UTF_8)))))
+                .collect(Collectors.toList());
+
+        // 没有数据, 则游标为空
+        ConnectionCursor startCursor = !edges.isEmpty() ? edges.get(0).getCursor() : new DefaultConnectionCursor("null");
+        ConnectionCursor endCursor = !edges.isEmpty() ? edges.get(edges.size() - 1).getCursor() : new DefaultConnectionCursor("null");
+
+        PageInfo pageInfo = new DefaultPageInfo(
+                startCursor,
+                endCursor,
+                hasPreviousPage,
+                hasNextPage
+        );
+
+        return new DefaultConnection<>(edges, pageInfo);
+    }
 
     @DgsMutation
     public PlayerInfoFeedback playerLogout() {
@@ -96,7 +154,7 @@ public class PlayerDataFetcher {
         if (!StpUtil.isLogin()) {
             feedback.setMessage("请登录");
             return feedback;
-        }else if (checkPassword(oldPassword) && checkPassword(newPassword)) {
+        } else if (checkPassword(oldPassword) && checkPassword(newPassword)) {
             String playerName = StpUtil.getLoginIdAsString();
             String password = service.getBaseMapper().getPasswordByPlayerName(playerName);
             if (password.equals(oldPassword)) {
@@ -120,7 +178,7 @@ public class PlayerDataFetcher {
 
         if (!StpUtil.isLogin()) {
             feedback.setMessage("请登录");
-        }else if (checkPlayerName(newPlayerName)) {
+        } else if (checkPlayerName(newPlayerName)) {
             String playerName = StpUtil.getLoginIdAsString();
             try {
                 service.getBaseMapper().updatePlayerName(newPlayerName, playerName);
@@ -148,7 +206,7 @@ public class PlayerDataFetcher {
             feedback.setMessage("请登录");
         } else if (multipartFile.getSize() > allowedAvatarSize) {
             feedback.setMessage("修改失败, 头像文件过大");
-        } else if (allowedAvatarTypes.contains(multipartFile.getContentType())){
+        } else if (allowedAvatarTypes.contains(multipartFile.getContentType())) {
             // 使用用户名作为文件名称, 保证唯一性, 可读
             String originalFilename = multipartFile.getOriginalFilename();
             assert originalFilename != null;
@@ -156,7 +214,7 @@ public class PlayerDataFetcher {
 
             try {
                 String playerName = StpUtil.getLoginIdAsString();
-                String savePath = uploadpath + playerName + type;
+                String savePath = uploadPath + playerName + type;
                 multipartFile.transferTo(new File(savePath));
 
                 service.getBaseMapper().updateAvatarpath(savePath, playerName);

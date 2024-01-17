@@ -9,9 +9,9 @@ import org.jetbrains.annotations.NotNull;
 public class GameRoomFeedback {
     @NotNull
     private Boolean success;
+    private String message;
     @NotNull
     private Boolean isInsideRoom;
     private RoomPlayerState self;
     private GameRoomInfo room;
-    private String message;
 }

@@ -4,7 +4,7 @@ import lombok.Data;
 import org.jetbrains.annotations.NotNull;
 
 @Data
-public class PlayerInfoFeedback {
+public class PlayerInfoFeedback{
     @NotNull
     private Boolean success;
     private String message;
