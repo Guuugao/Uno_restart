@@ -9,11 +9,12 @@ import java.util.Base64;
 @Configuration
 @MapperScan("com.uno_restart.mapper")
 public class DefaultConfig {
+    // Java Base64解码器
     @Bean
     public Base64.Decoder base64Decoder(){
         return Base64.getDecoder();
     }
-
+    // Java Base64编码器
     @Bean
     public Base64.Encoder base64Encoder(){
         return Base64.getEncoder();
