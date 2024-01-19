@@ -1,10 +1,13 @@
 package com.uno_restart;
 
 import cn.dev33.satoken.stp.StpUtil;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.uno_restart.service.PlayerInfoService;
 import com.uno_restart.types.player.PlayerContact;
 import com.uno_restart.types.player.PlayerHistory;
 import com.uno_restart.types.player.PlayerInfo;
+import com.uno_restart.util.RoomIDUtil;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -44,5 +47,23 @@ class DefaultTests {
         System.out.println(StpUtil.getTokenTimeout(StpUtil.getTokenValue()));
         System.out.println(StpUtil.getTokenInfo());
         StpUtil.logout("admin");
+    }
+
+    @Test
+    void roomID(){
+        for (int i = 0; i< 10; ++i){
+            System.out.println("-----------------");
+            System.out.println(System.currentTimeMillis());
+            System.out.println(RoomIDUtil.getNextId());
+        }
+    }
+
+    @Test
+    void jsonParse() throws JsonProcessingException {
+        ObjectMapper objectMapper = new ObjectMapper();
+        PlayerContact contact = new PlayerContact(null, null);
+        System.out.println(contact.getEmail());
+        System.out.println(contact.getPhone());
+        System.out.println(objectMapper.writeValueAsString(contact));
     }
 }

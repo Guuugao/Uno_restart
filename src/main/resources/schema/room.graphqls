@@ -18,13 +18,12 @@ type RoomPlayerState {
 # 可以不指定房主, 玩家全部退出即删除房间
 type GameRoomInfo {
     roomId: ID!
-#    ID: String! # 测试分页
-
     roomName: String!
     # 是否正在进行游戏
     isPlaying: Boolean!
-    privateRoom: Boolean!
+    isPrivate: Boolean!
     requirePassword: Boolean!
+    password: String!
     maxPlayerCount: Int!
     currentPlayerCount: Int!
     joinedPlayer: [RoomPlayerState]!

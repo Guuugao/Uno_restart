@@ -1,11 +1,13 @@
 package com.uno_restart.dataFetcher;
 
 import cn.dev33.satoken.stp.StpUtil;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.netflix.graphql.dgs.DgsComponent;
 import com.netflix.graphql.dgs.DgsMutation;
 import com.netflix.graphql.dgs.DgsQuery;
 import com.uno_restart.service.PlayerInfoService;
 import com.uno_restart.types.player.PlayerAvatarFeedback;
+import com.uno_restart.types.player.PlayerContact;
 import com.uno_restart.types.player.PlayerInfo;
 import com.uno_restart.types.player.PlayerInfoFeedback;
 import graphql.relay.*;
@@ -25,11 +27,13 @@ import java.util.Base64;
 import java.util.List;
 import java.util.stream.Collectors;
 
+// TODO 修改成员变量可能需要线程安全
+
 @Slf4j
 @DgsComponent
 public class PlayerDataFetcher {
     @Autowired
-    PlayerInfoService service;
+    PlayerInfoService playerService;
     @Autowired
     Base64.Encoder encoder;
     private static final String uploadPath = "./uploads/";
@@ -41,7 +45,7 @@ public class PlayerDataFetcher {
     @DgsQuery
     public PlayerInfo me() {
         StpUtil.checkLogin();
-        return service.getById(StpUtil.getLoginIdAsString());
+        return playerService.getById(StpUtil.getLoginIdAsString());
     }
 
     @DgsQuery
@@ -49,8 +53,9 @@ public class PlayerDataFetcher {
         StpUtil.checkLogin();
 
         first = first == null ? 10 : first; // 默认一页10条数据
-        List<PlayerInfo> playerInfos = service.selectPlayerInfoPage(playerName, first + 2, after);
+        List<PlayerInfo> playerInfos = playerService.selectPlayerInfoPage(playerName, first + 2, after);
 
+        log.info(playerInfos.toString());
         boolean hasPreviousPage = false;
         boolean hasNextPage = false;
         if (!playerInfos.isEmpty()) { // 去除首尾多余节点, 还有数据
@@ -96,8 +101,8 @@ public class PlayerDataFetcher {
         if (!StpUtil.isLogin()) {
             feedback.setMessage("请登录");
         } else {
-            feedback.setSuccess(true);
-            feedback.setMessage("注销成功");
+            feedback.setSuccess(true)
+                    .setMessage("注销成功");
             StpUtil.logout();
         }
 
@@ -110,10 +115,10 @@ public class PlayerDataFetcher {
         PlayerInfoFeedback feedback = new PlayerInfoFeedback(false);
 
         if (checkPlayerName(playerName) && checkPassword(password)) {
-            PlayerInfo player = service.getById(playerName);
+            PlayerInfo player = playerService.getById(playerName);
             if (player.getPassword().equals(password)) {
-                feedback.setSuccess(true);
-                feedback.setMessage("登陆成功");
+                feedback.setSuccess(true)
+                        .setMessage("登陆成功");
                 StpUtil.login(playerName);
             } else {
                 feedback.setMessage("用户名或密码错误");
@@ -132,9 +137,9 @@ public class PlayerDataFetcher {
         if (checkPlayerName(playerName) && checkPassword(password)) {
             PlayerInfo player = new PlayerInfo(playerName, password);
             try {
-                service.save(player);
-                feedback.setSuccess(true);
-                feedback.setMessage("注册成功");
+                playerService.save(player);
+                feedback.setSuccess(true)
+                        .setMessage("注册成功");
                 return feedback;
             } catch (DuplicateKeyException e) {
                 feedback.setMessage("注册失败, 用户名已被占用");
@@ -156,11 +161,11 @@ public class PlayerDataFetcher {
             return feedback;
         } else if (checkPassword(oldPassword) && checkPassword(newPassword)) {
             String playerName = StpUtil.getLoginIdAsString();
-            String password = service.getBaseMapper().getPasswordByPlayerName(playerName);
+            String password = playerService.getBaseMapper().getPasswordByPlayerName(playerName);
             if (password.equals(oldPassword)) {
-                service.getBaseMapper().updatePassword(newPassword, playerName);
-                feedback.setSuccess(true);
-                feedback.setMessage("密码修改成功, 请重新登录");
+                playerService.getBaseMapper().updatePassword(newPassword, playerName);
+                feedback.setSuccess(true)
+                        .setMessage("密码修改成功, 请重新登录");
                 StpUtil.logout();
             } else {
                 feedback.setMessage("原密码错误, 请重新输入");
@@ -181,9 +186,9 @@ public class PlayerDataFetcher {
         } else if (checkPlayerName(newPlayerName)) {
             String playerName = StpUtil.getLoginIdAsString();
             try {
-                service.getBaseMapper().updatePlayerName(newPlayerName, playerName);
-                feedback.setSuccess(true);
-                feedback.setMessage("用户名修改成功, 请重新登录");
+                playerService.getBaseMapper().updatePlayerName(newPlayerName, playerName);
+                feedback.setSuccess(true)
+                        .setMessage("用户名修改成功, 请重新登录");
                 StpUtil.logout();
                 return feedback;
             } catch (DuplicateKeyException e) {
@@ -217,10 +222,10 @@ public class PlayerDataFetcher {
                 String savePath = uploadPath + playerName + type;
                 multipartFile.transferTo(new File(savePath));
 
-                service.getBaseMapper().updateAvatarpath(savePath, playerName);
+                playerService.getBaseMapper().updateAvatarpath(savePath, playerName);
 
-                feedback.setSuccess(true);
-                feedback.setMessage("头像上传成功");
+                feedback.setSuccess(true)
+                        .setMessage("头像上传成功");
                 feedback.setAvatarPath(savePath);
             } catch (IOException e) {
                 feedback.setMessage("文件上传失败");
@@ -233,12 +238,40 @@ public class PlayerDataFetcher {
         return feedback;
     }
 
+    @DgsMutation
+    public PlayerInfoFeedback playerContactModify(String email, String phone) throws JsonProcessingException {
+        PlayerInfoFeedback feedback = new PlayerInfoFeedback(false);
+
+        if (!StpUtil.isLogin()) {
+            feedback.setMessage("请登录");
+        } else if (checkEmail(email) && checkPhone(phone)) {
+            String playerName = StpUtil.getLoginIdAsString();
+            playerService.updateContact(new PlayerContact(email, phone), playerName);
+
+            feedback.setSuccess(true)
+                    .setMessage("联系方式修改成功");
+        } else {
+            feedback.setMessage("联系方式修改失败, 邮箱或手机号码格式不正确");
+        }
+
+        return feedback;
+    }
 
     private boolean checkPlayerName(String playerName) {
-        return playerName.matches("^.{2,8}$");
+        return playerName.length() >= 2 && playerName.length() <= 8;
     }
 
     private boolean checkPassword(String password) {
         return password.matches("^(?=.*[a-zA-Z])(?=.*\\d)[a-zA-Z\\d]{6,16}$");
+    }
+
+    private boolean checkEmail(String email) {
+        // 邮箱为空代表清除邮箱
+        return email == null || email.matches("^[a-z0-9A-Z]+[-|a-z0-9A-Z._]+@([a-z0-9A-Z]+(-[a-z0-9A-Z]+)?\\.)+[a-z]{2,}$");
+    }
+
+    private boolean checkPhone(String phone) {
+        // 同上
+        return phone == null || phone.matches("^1[3456789]\\d{9}$");
     }
 }

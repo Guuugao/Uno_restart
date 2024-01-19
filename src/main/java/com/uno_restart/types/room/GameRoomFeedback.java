@@ -1,11 +1,11 @@
 package com.uno_restart.types.room;
 
-import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.experimental.Accessors;
 import org.jetbrains.annotations.NotNull;
 
 @Data
-@AllArgsConstructor
+@Accessors(chain = true)
 public class GameRoomFeedback {
     @NotNull
     private Boolean success;

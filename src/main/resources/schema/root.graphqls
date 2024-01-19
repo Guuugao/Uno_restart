@@ -26,9 +26,10 @@ type Mutation {
     playerPasswordModify(oldPassword: String!, newPassword: String!) : PlayerInfoFeedback!
     playerNameModify(newPlayerName: String!) : PlayerInfoFeedback!
     playerAvatarModify(avatar: Upload!) : PlayerAvatarFeedback!
+    playerContactModify(email: String, phone: String) : PlayerInfoFeedback!
 
     # 游戏房间相关
-    roomCreate(roomName: String!, maxPlayer: Int = 4, password: String, private: Boolean = false) : GameRoomFeedback!
+    roomCreate(roomName: String!, maxPlayerCount: Int = 4, isPrivate: Boolean = false, password: String) : GameRoomFeedback!
     roomJoin(roomId: ID!, password: String) : GameRoomFeedback!
     roomExit(roomId: ID!) : GameRoomFeedback!
     roomPlayerReady(roomId: ID!) : GameRoomFeedback!

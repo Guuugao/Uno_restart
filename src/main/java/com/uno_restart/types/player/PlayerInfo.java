@@ -2,6 +2,7 @@ package com.uno_restart.types.player;
 
 import com.baomidou.mybatisplus.annotation.*;
 import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
@@ -9,9 +10,10 @@ import lombok.experimental.Accessors;
 import org.jetbrains.annotations.NotNull;
 
 @Data
-@NoArgsConstructor
 @Accessors(chain = true)
+@NoArgsConstructor
 @RequiredArgsConstructor
+@AllArgsConstructor
 @TableName(value = "playerinfo", autoResultMap = true)
 public class PlayerInfo {
     @NotNull
@@ -27,7 +29,7 @@ public class PlayerInfo {
     @TableField(fill = FieldFill.INSERT)
     private Boolean isOnline;
 
-    @TableField(typeHandler = JacksonTypeHandler.class)
+    @TableField(typeHandler = JacksonTypeHandler.class, fill = FieldFill.INSERT)
     private PlayerContact contact;
     @TableField(typeHandler = JacksonTypeHandler.class, fill = FieldFill.INSERT)
     private PlayerHistory history;

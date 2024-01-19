@@ -46,6 +46,8 @@ dependencies {
     implementation 'org.mybatis:mybatis-spring:3.0.3'
     // Sa-Token认证
     implementation 'cn.dev33:sa-token-spring-boot3-starter:1.37.0'
+    // 为游戏房间生成唯一ID
+    implementation 'org.sqids:sqids:0.1.0'
 
     implementation 'org.springframework.boot:spring-boot-starter-web'
     compileOnly 'org.projectlombok:lombok'
