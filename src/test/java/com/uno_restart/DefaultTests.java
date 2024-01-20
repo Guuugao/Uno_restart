@@ -1,6 +1,9 @@
 package com.uno_restart;
 
+import cn.dev33.satoken.fun.SaParamRetFunction;
 import cn.dev33.satoken.stp.StpUtil;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.uno_restart.service.PlayerInfoService;
@@ -12,6 +15,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
+import java.util.List;
+
 
 @SpringBootTest
 class DefaultTests {
@@ -20,13 +25,24 @@ class DefaultTests {
 
     @Test
     void select() {
-        PlayerInfo playerInfo = service.getById("admin");
-        System.out.println(playerInfo);
+        List<PlayerInfo> playerInfos = service.selectPlayerInfoPage("Thh", 5, null);
+        playerInfos.forEach(System.out::println);
     }
 
     @Test
-    void selectPage(){
-
+    void update() throws JsonProcessingException {
+        LambdaUpdateWrapper<PlayerInfo> wrapper = new LambdaUpdateWrapper<>();
+        ObjectMapper mapper = new ObjectMapper();
+        PlayerContact contact = new PlayerContact(null, null);
+        wrapper.eq(PlayerInfo::getPlayerName, "admin").set(PlayerInfo::getContact,
+                mapper.writeValueAsString(contact));
+        service.update(wrapper);
+    }
+    @Test
+    void reference(){
+        SaParamRetFunction<PlayerInfo, String> getPassword = PlayerInfo::getPassword;
+        System.out.println(getPassword.toString());
+        System.out.println(getPassword.getClass());
     }
 
     @Test
@@ -65,5 +81,17 @@ class DefaultTests {
         System.out.println(contact.getEmail());
         System.out.println(contact.getPhone());
         System.out.println(objectMapper.writeValueAsString(contact));
+    }
+
+    @Test
+    void wapper() {
+        LambdaQueryWrapper<PlayerInfo> wrapper = new LambdaQueryWrapper<>( );
+        wrapper.clear();
+        wrapper.select();
+        List<PlayerInfo> list = service.list(wrapper);
+        list.forEach(System.out::println);
+        wrapper.select(PlayerInfo::getPassword).eq(PlayerInfo::getPlayerName, "admin");
+        PlayerInfo one = service.getOneOpt(wrapper).get();
+        System.out.println(one);
     }
 }

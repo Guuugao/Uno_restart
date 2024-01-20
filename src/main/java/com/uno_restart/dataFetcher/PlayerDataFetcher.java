@@ -161,9 +161,9 @@ public class PlayerDataFetcher {
             return feedback;
         } else if (checkPassword(oldPassword) && checkPassword(newPassword)) {
             String playerName = StpUtil.getLoginIdAsString();
-            String password = playerService.getBaseMapper().getPasswordByPlayerName(playerName);
+            String password = playerService.getPasswordByPlayerName(playerName);
             if (password.equals(oldPassword)) {
-                playerService.getBaseMapper().updatePassword(newPassword, playerName);
+                playerService.updatePassword(newPassword, playerName);
                 feedback.setSuccess(true)
                         .setMessage("密码修改成功, 请重新登录");
                 StpUtil.logout();
@@ -186,7 +186,7 @@ public class PlayerDataFetcher {
         } else if (checkPlayerName(newPlayerName)) {
             String playerName = StpUtil.getLoginIdAsString();
             try {
-                playerService.getBaseMapper().updatePlayerName(newPlayerName, playerName);
+                playerService.updatePlayerName(newPlayerName, playerName);
                 feedback.setSuccess(true)
                         .setMessage("用户名修改成功, 请重新登录");
                 StpUtil.logout();
@@ -222,7 +222,7 @@ public class PlayerDataFetcher {
                 String savePath = uploadPath + playerName + type;
                 multipartFile.transferTo(new File(savePath));
 
-                playerService.getBaseMapper().updateAvatarpath(savePath, playerName);
+                playerService.updateAvatarpath(savePath, playerName);
 
                 feedback.setSuccess(true)
                         .setMessage("头像上传成功");
