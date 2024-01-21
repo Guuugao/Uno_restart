@@ -9,7 +9,6 @@ import com.uno_restart.service.PlayerService;
 import com.uno_restart.types.player.PlayerInfo;
 import com.uno_restart.types.room.GameRoomFeedback;
 import com.uno_restart.types.room.GameRoomInfo;
-import com.uno_restart.types.room.RoomPlayerState;
 import graphql.relay.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -43,7 +42,6 @@ public class RoomDataFetcher {
     @DgsQuery
     public Connection<GameRoomInfo> queryRoomByName(String roomName, Integer first, String after) {
         StpUtil.checkLogin();
-        first = first == null ? 10 : first; // 默认一页10条数据
         String cursor = (after == null) ? null : new String(decoder.decode(after));
 
         Stream<GameRoomInfo> roomInfoStream = gameService.getPublicRooms().values()
@@ -94,6 +92,85 @@ public class RoomDataFetcher {
         );
 
         return new DefaultConnection<>(edges, pageInfo);
+    }
+
+    @DgsQuery
+    public Connection<GameRoomInfo> availableRooms(Integer first, String after) {
+        StpUtil.checkLogin();
+
+        String cursor = (after == null) ? null : new String(decoder.decode(after));
+
+        Stream<GameRoomInfo> roomInfoStream = gameService.getPublicRooms().values()
+                .stream();
+        if (after != null && after.isEmpty()) {
+            roomInfoStream = roomInfoStream.filter(room -> room.getRoomName().compareTo(cursor) >= 0);
+        }
+        List<GameRoomInfo> rooms = new ArrayList<>(
+                roomInfoStream
+                        .limit(first + 2)
+                        .toList());
+
+        boolean hasPreviousPage = false;
+        boolean hasNextPage = false;
+        if (!rooms.isEmpty()) { // 去除首尾多余节点, 还有数据
+            // 若存在前驱页, 则第一条数据的playerName与解码后的after相等
+            // 此时设置hasPreviousPage = true, 同时删除该前驱节点
+            String previousNodeCursor = encoder.encodeToString(
+                    rooms.get(0).getRoomName().getBytes(StandardCharsets.UTF_8));
+            if (previousNodeCursor.equals(after)) {
+                hasPreviousPage = true;
+                rooms.remove(0);
+            }
+            // 若数据条数大于给定大小(first), 代表包含多余节点, 即存在后驱页
+            hasNextPage = rooms.size() > first;
+        }
+
+        List<Edge<GameRoomInfo>> edges =
+                rooms.stream()
+                        .limit(first)
+                        .map(roomInfo -> new DefaultEdge<>(roomInfo,
+                                new DefaultConnectionCursor(
+                                        encoder.encodeToString(
+                                                roomInfo.getRoomName().getBytes(
+                                                        StandardCharsets.UTF_8)))))
+                        .collect(Collectors.toList());
+
+        // 没有数据, 则游标为空
+        ConnectionCursor startCursor = !edges.isEmpty() ? edges.get(0).getCursor() : new DefaultConnectionCursor("null");
+        ConnectionCursor endCursor = !edges.isEmpty() ? edges.get(edges.size() - 1).getCursor() : new DefaultConnectionCursor("null");
+
+        PageInfo pageInfo = new DefaultPageInfo(
+                startCursor,
+                endCursor,
+                hasPreviousPage,
+                hasNextPage
+        );
+
+        return new DefaultConnection<>(edges, pageInfo);
+    }
+
+    @DgsQuery
+    public GameRoomFeedback currentJoinedRoom() {
+        GameRoomFeedback feedback = new GameRoomFeedback(false, false);
+
+        if (!StpUtil.isLogin()) {
+            feedback.setMessage("请登录");
+        } else {
+            String playerName = StpUtil.getLoginIdAsString();
+            GameRoomInfo room = gameService.whichRoom(playerName);
+            if (room != null) {
+                feedback.setSuccess(true)
+                        .setMessage("玩家当前位于房间 " + room.getRoomName())
+                        .setIsInsideRoom(true)
+                        .setRoom(room)
+                        .setSelf(gameService.getPlayerState(playerName));
+            } else {
+                feedback.setSuccess(true)
+                        .setMessage("玩家 " + playerName + " 未加入任何房间");
+            }
+        }
+
+        return feedback;
     }
     /* TODO
     * UNO游戏原则上允许2-10人参与。
@@ -181,7 +258,7 @@ public class RoomDataFetcher {
             String playerName = StpUtil.getLoginIdAsString();
             gameService.ready(roomID, playerName, true);
             feedback.setSuccess(true)
-                    .setMessage("玩家" + playerName + "已准备")
+                    .setMessage("玩家 " + playerName + " 已准备")
                     .setIsInsideRoom(true)
                     .setSelf(gameService.getPlayerState(playerName))
                     .setRoom(gameService.getRoom(roomID));
@@ -200,7 +277,7 @@ public class RoomDataFetcher {
             String playerName = StpUtil.getLoginIdAsString();
             gameService.ready(roomID, playerName, false);
             feedback.setSuccess(true)
-                    .setMessage("玩家" + playerName + "已取消准备")
+                    .setMessage("玩家 " + playerName + " 已取消准备")
                     .setIsInsideRoom(true)
                     .setSelf(gameService.getPlayerState(playerName))
                     .setRoom(gameService.getRoom(roomID));

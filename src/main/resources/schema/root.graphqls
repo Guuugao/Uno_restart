@@ -8,8 +8,7 @@ type Query {
     queryRoomByName(roomName: String!, first: Int = 10, after: String) : GameRoomConnection!
     # 根据房间id查找指定游戏房间, 可以返回空
     queryRoomByID(roomID: ID!): GameRoomInfo
-    # 获取公开房间列表, length: 每页房间数量, 返回[beginPage, endPage)页
-    # 默认返回3页, 每页16个房间信息, 结果可以为空
+    # 获取公开房间列表
     availableRooms(first: Int = 10, after: String) : GameRoomConnection!
     # 查询当前加入的房间
     currentJoinedRoom: GameRoomFeedback!

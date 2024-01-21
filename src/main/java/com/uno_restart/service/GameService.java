@@ -1,12 +1,10 @@
 package com.uno_restart.service;
 
-import com.uno_restart.types.game.GamePlayerState;
 import com.uno_restart.types.player.PlayerInfo;
 import com.uno_restart.types.room.GameRoomInfo;
 import com.uno_restart.types.room.RoomPlayerState;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import org.jetbrains.annotations.NotNull;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
@@ -91,6 +89,10 @@ public class GameService {
 
     public GameRoomInfo getRoom(String roomID){
         return rooms.get(roomID);
+    }
+
+    public GameRoomInfo whichRoom(String playerName) {
+        return rooms.get(playerRooms.get(playerName));
     }
 
     public GameService() {
