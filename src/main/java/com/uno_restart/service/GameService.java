@@ -16,16 +16,16 @@ import java.util.Optional;
 public class GameService {
     // 玩家id及其及加入的房间
     // key: playerName value: roomID
-    private HashMap<String, String> playerRooms;
+    private final HashMap<String, String> playerRooms;
     // 公开房间
     // key: roomID value: roomInfo
-    private HashMap<String, GameRoomInfo> publicRooms;
+    private final HashMap<String, GameRoomInfo> publicRooms;
     // 私有房间
     // key: roomID value: roomInfo
-    private HashMap<String, GameRoomInfo> privateRooms;
+    private final HashMap<String, GameRoomInfo> privateRooms;
     // 所有房间
     // key: roomID value: roomInfo
-    private HashMap<String, GameRoomInfo> rooms;
+    private final HashMap<String, GameRoomInfo> rooms;
 
     public boolean canCreate(String playerName) {
         return playerRooms.containsKey(playerName);
