@@ -50,7 +50,7 @@ type GameTurnsFeedback {
 
 # 游戏内玩家状态
 type GamePlayerState {
-    playerId: ID!
+    playerName: String!
     status: EnumGamePlayerStatus!
 }
 

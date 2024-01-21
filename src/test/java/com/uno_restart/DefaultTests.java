@@ -6,7 +6,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.uno_restart.service.PlayerInfoService;
+import com.uno_restart.service.PlayerService;
 import com.uno_restart.types.player.PlayerContact;
 import com.uno_restart.types.player.PlayerHistory;
 import com.uno_restart.types.player.PlayerInfo;
@@ -15,13 +15,14 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
+import java.util.HashMap;
 import java.util.List;
 
 
 @SpringBootTest
 class DefaultTests {
     @Autowired
-    PlayerInfoService service;
+    PlayerService service;
 
     @Test
     void select() {
@@ -93,5 +94,11 @@ class DefaultTests {
         wrapper.select(PlayerInfo::getPassword).eq(PlayerInfo::getPlayerName, "admin");
         PlayerInfo one = service.getOneOpt(wrapper).get();
         System.out.println(one);
+    }
+
+    @Test
+    void mapTest() {
+        HashMap<String, PlayerInfo> map_1 = new HashMap<>();
+        map_1.remove("demo");
     }
 }

@@ -3,14 +3,14 @@ type Query {
     # 查询自己
     me: PlayerInfo!
     # 通过玩家名称查询用户, 未指定名称代表查询自己, 可以返回空
-    queryPlayerByName(playerName: String!, first: Int, after: String) : PlayerConnection!
+    queryPlayerByName(playerName: String!, first: Int = 10, after: String) : PlayerConnection!
     # 根据房间名称查找指定游戏房间, 可以返回空
-    queryRoomByName(roomName: String!, first: Int, after: String) : PlayerConnection!
+    queryRoomByName(roomName: String!, first: Int = 10, after: String) : GameRoomConnection!
     # 根据房间id查找指定游戏房间, 可以返回空
-    queryRoomByID(roomId: ID!): GameRoomInfo
+    queryRoomByID(roomID: ID!): GameRoomInfo
     # 获取公开房间列表, length: 每页房间数量, 返回[beginPage, endPage)页
     # 默认返回3页, 每页16个房间信息, 结果可以为空
-    availableRooms(first: Int, after: String) : GameRoomConnection!
+    availableRooms(first: Int = 10, after: String) : GameRoomConnection!
     # 查询当前加入的房间
     currentJoinedRoom: GameRoomFeedback!
 }
@@ -30,17 +30,17 @@ type Mutation {
 
     # 游戏房间相关
     roomCreate(roomName: String!, maxPlayerCount: Int = 4, isPrivate: Boolean = false, password: String) : GameRoomFeedback!
-    roomJoin(roomId: ID!, password: String) : GameRoomFeedback!
-    roomExit(roomId: ID!) : GameRoomFeedback!
-    roomPlayerReady(roomId: ID!) : GameRoomFeedback!
-    roomPlayerUnready(roomId: ID!) : GameRoomFeedback!
+    roomJoin(roomID: ID!, password: String) : GameRoomFeedback!
+    roomQuit : GameRoomFeedback!
+    roomPlayerReady(roomID: ID!) : GameRoomFeedback!
+    roomPlayerUnready(roomID: ID!) : GameRoomFeedback!
 
     # 游玩内容
-    gameSendCard(roomId: ID!, card: GameCardInput!): Boolean
+    gameSendCard(roomID: ID!, card: GameCardInput!): Boolean
 }
 
 # 订阅
 type Subscription {
-    roomWaitStart(roomId: ID!) : GameSettings
-    gameWaitNextReaction(roomId: ID!) : GameTurnsFeedback
+    roomWaitStart(roomID: ID!) : GameSettings
+    gameWaitNextReaction(roomID: ID!) : GameTurnsFeedback
 }

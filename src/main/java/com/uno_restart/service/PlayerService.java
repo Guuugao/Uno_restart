@@ -15,11 +15,10 @@ import java.util.Base64;
 import java.util.List;
 
 
-// TODO 改为wapper实现
 @Service
-public class PlayerInfoService
+public class PlayerService
         extends ServiceImpl<PlayerInfoMapper, PlayerInfo>
-        implements IPlayerInfoService {
+        implements IPlayerService {
     @Autowired
     Base64.Decoder decoder;
     @Autowired
@@ -68,7 +67,7 @@ public class PlayerInfoService
 
         wrapper.likeRight(PlayerInfo::getPlayerName, playerName);
         if (after != null && !after.isEmpty()) {
-            wrapper.ge(PlayerInfo::getPlayerName, after);
+            wrapper.ge(PlayerInfo::getPlayerName, cursor);
         }
         wrapper.last("limit " + first);
 

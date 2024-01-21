@@ -5,21 +5,22 @@ import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
 import org.jetbrains.annotations.NotNull;
 
 @Data
 @Accessors(chain = true)
 @NoArgsConstructor
-//@RequiredArgsConstructor
 @AllArgsConstructor
+@RequiredArgsConstructor
 @TableName(value = "playerinfo", autoResultMap = true)
 public class PlayerInfo {
-//    @NotNull
+    @NotNull
     @TableId(type = IdType.INPUT)
     private String playerName;
 
-//    @NotNull
+    @NotNull
     private String password;
     @TableField(fill = FieldFill.INSERT)
     private String avatarPath;
@@ -32,9 +33,4 @@ public class PlayerInfo {
     private PlayerContact contact;
     @TableField(typeHandler = JacksonTypeHandler.class, fill = FieldFill.INSERT)
     private PlayerHistory history;
-
-    public PlayerInfo(@NotNull String playerName, @NotNull String password) {
-        this.playerName = playerName;
-        this.password = password;
-    }
 }

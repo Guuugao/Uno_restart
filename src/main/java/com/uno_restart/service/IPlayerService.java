@@ -6,7 +6,7 @@ import com.uno_restart.types.player.PlayerInfo;
 
 import java.util.List;
 
-public interface IPlayerInfoService{
+public interface IPlayerService {
 //    void updateContact(PlayerContact contact, String playerName) throws JsonProcessingException;
 //    List<PlayerInfo> selectPlayerInfoPage(String playerName, Integer first, String after);
 

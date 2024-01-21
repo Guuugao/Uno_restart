@@ -29,25 +29,3 @@ type PageInfo {
     hasPreviousPage: Boolean!
     hasNextPage: Boolean!
 }
-
-# 玩家信息分页
-type PlayerEdge {
-    node: PlayerInfo!
-    cursor: String!
-}
-
-type PlayerConnection {
-    edges: [PlayerEdge!]!
-    pageInfo: PageInfo!
-}
-
-# 游戏房间分页
-type GameRoomEdge {
-    node: GameRoomInfo!
-    cursor: String!
-}
-
-type GameRoomConnection {
-    edges: [GameRoomEdge!]!
-    pageInfo: PageInfo!
-}

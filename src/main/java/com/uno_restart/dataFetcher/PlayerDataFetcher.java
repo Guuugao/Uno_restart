@@ -5,7 +5,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.netflix.graphql.dgs.DgsComponent;
 import com.netflix.graphql.dgs.DgsMutation;
 import com.netflix.graphql.dgs.DgsQuery;
-import com.uno_restart.service.PlayerInfoService;
+import com.uno_restart.service.PlayerService;
 import com.uno_restart.types.player.PlayerAvatarFeedback;
 import com.uno_restart.types.player.PlayerContact;
 import com.uno_restart.types.player.PlayerInfo;
@@ -33,7 +33,7 @@ import java.util.stream.Collectors;
 @DgsComponent
 public class PlayerDataFetcher {
     @Autowired
-    PlayerInfoService playerService;
+    PlayerService playerService;
     @Autowired
     Base64.Encoder encoder;
     private static final String uploadPath = "./uploads/";
@@ -52,10 +52,8 @@ public class PlayerDataFetcher {
     public Connection<PlayerInfo> queryPlayerByName(String playerName, Integer first, String after) {
         StpUtil.checkLogin();
 
-        first = first == null ? 10 : first; // 默认一页10条数据
         List<PlayerInfo> playerInfos = playerService.selectPlayerInfoPage(playerName, first + 2, after);
 
-        log.info(playerInfos.toString());
         boolean hasPreviousPage = false;
         boolean hasNextPage = false;
         if (!playerInfos.isEmpty()) { // 去除首尾多余节点, 还有数据

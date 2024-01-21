@@ -1,5 +1,17 @@
 ##### 玩家
 
+# 玩家信息分页
+type PlayerEdge {
+    node: PlayerInfo!
+    cursor: String!
+}
+
+type PlayerConnection {
+    edges: [PlayerEdge!]!
+    pageInfo: PageInfo!
+}
+
+
 # 玩家信息
 type PlayerInfo {
     # 玩家名称
