@@ -37,13 +37,13 @@ import java.util.stream.Stream;
 @DgsComponent
 public class GameRoomDataFetcher {
     @Autowired
-    PlayerService playerService;
+    private PlayerService playerService;
     @Autowired
-    GameRoomService gameRoomService;
+    private GameRoomService gameRoomService;
     @Autowired
-    Base64.Encoder encoder;
+    private Base64.Encoder encoder;
     @Autowired
-    Base64.Decoder decoder;
+    private Base64.Decoder decoder;
     @Autowired
     private ConfigurableApplicationContext context;
 
@@ -277,9 +277,10 @@ public class GameRoomDataFetcher {
         } else {
             String playerName = StpUtil.getLoginIdAsString();
             gameRoomService.ready(roomID, playerName, true);
-
+            GameRoomInfo room = gameRoomService.getRoom(roomID);
             // 若玩家全部准备并且玩家数量大于最小玩家数量, 则开始
-            if (gameRoomService.canStart(roomID)) {
+            if (checkPlayerCount(room.getCurrentPlayerCount()) &&
+                    room.getCurrentPlayerCount() == room.getReadyPlayerCnt()) {
                 context.publishEvent(new GameStartEvent(roomID));
             }
 
@@ -287,7 +288,7 @@ public class GameRoomDataFetcher {
                     .setMessage("玩家 " + playerName + " 已准备")
                     .setIsInsideRoom(true)
                     .setSelf(gameRoomService.getPlayerState(playerName))
-                    .setRoom(gameRoomService.getRoom(roomID));
+                    .setRoom(room);
         }
 
         return feedback;

@@ -51,6 +51,8 @@ dependencies {
     // Subscription 测试
     testImplementation("io.projectreactor:reactor-test")
     testImplementation("org.springframework.boot:spring-boot-starter-webflux")
+    // 加密密码
+    implementation 'com.google.guava:guava:33.0.0-jre'
 
     implementation 'org.springframework.boot:spring-boot-starter-web'
     compileOnly 'org.projectlombok:lombok'

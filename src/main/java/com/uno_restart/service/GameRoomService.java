@@ -84,13 +84,6 @@ public class GameRoomService {
         room.ready(playerName, isReady);
     }
 
-
-    public boolean canStart(String roomID) {
-        GameRoomInfo room = rooms.get(roomID);
-        // TODO 开始游戏需要检查玩家数量是否大于最小玩家数量, 但是方便测试, 先不写
-        return room.getCurrentPlayerCount().equals(room.getReadyCnt());
-    }
-
     public RoomPlayerState getPlayerState(String playerName){
         // 未加入房间, 不做处理
         if (isPlayerNotJoinRoom(playerName)) return null;

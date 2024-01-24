@@ -33,4 +33,7 @@ public class PlayerInfo {
     private PlayerContact contact;
     @TableField(typeHandler = JacksonTypeHandler.class, fill = FieldFill.INSERT)
     private PlayerHistory history;
+
+    @NotNull
+    private String salt; // 使用UUID作为盐, 在注册或者修改密码时重新生成
 }

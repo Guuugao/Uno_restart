@@ -32,9 +32,18 @@ public class PlayerService
     }
 
     @Override
-    public void updatePassword(String newPassword, String playerName) {
+    public String getSalt(String playerName) {
+        LambdaQueryWrapper<PlayerInfo> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(PlayerInfo::getPlayerName, playerName).select(PlayerInfo::getSalt);
+        return this.getOne(wrapper).getSalt();
+    }
+
+    @Override
+    public void updatePassword(String newPassword, String salt, String playerName) {
         LambdaUpdateWrapper<PlayerInfo> wrapper = new LambdaUpdateWrapper<>();
-        wrapper.eq(PlayerInfo::getPlayerName, playerName).set(PlayerInfo::getPassword, newPassword);
+        wrapper.eq(PlayerInfo::getPlayerName, playerName)
+                .set(PlayerInfo::getPassword, newPassword)
+                .set(PlayerInfo::getSalt, salt);
         this.update(wrapper);
     }
 

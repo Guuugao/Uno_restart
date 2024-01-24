@@ -14,7 +14,8 @@ public interface IPlayerService {
 
     String getPasswordByPlayerName(String playerName);
 
-    void updatePassword(String newPassword, String playerName);
+    String getSalt(String playerName);
+    void updatePassword(String newPassword, String salt, String playerName);
     void updatePlayerName(String newPlayerName, String playerName);
 
     void updateAvatarpath(String newAvatarpath, String playerName);

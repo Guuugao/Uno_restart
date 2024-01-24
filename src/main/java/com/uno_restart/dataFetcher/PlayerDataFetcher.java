@@ -2,6 +2,7 @@ package com.uno_restart.dataFetcher;
 
 import cn.dev33.satoken.stp.StpUtil;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.google.common.hash.Hashing;
 import com.netflix.graphql.dgs.DgsComponent;
 import com.netflix.graphql.dgs.DgsMutation;
 import com.netflix.graphql.dgs.DgsQuery;
@@ -21,10 +22,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Base64;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 // TODO 修改成员变量可能需要线程安全
@@ -109,14 +107,13 @@ public class PlayerDataFetcher {
         return feedback;
     }
 
-    // TODO 数据库存储密码需要加密
     @DgsMutation
     public PlayerInfoFeedback playerLogin(@NotNull String playerName, @NotNull String password) {
         PlayerInfoFeedback feedback = new PlayerInfoFeedback(false);
 
-        if (checkPlayerName(playerName) && checkPassword(password)) {
+        if (checkPlayerName(playerName)) {
             PlayerInfo player = playerService.getById(playerName);
-            if (player.getPassword().equals(password)) {
+            if (comparePassword(playerName, password)) {
                 feedback.setSuccess(true)
                         .setMessage("登陆成功");
                 StpUtil.login(playerName);
@@ -134,8 +131,11 @@ public class PlayerDataFetcher {
     public PlayerInfoFeedback playerRegister(@NotNull String playerName, @NotNull String password) {
         PlayerInfoFeedback feedback = new PlayerInfoFeedback(false);
 
-        if (checkPlayerName(playerName) && checkPassword(password)) {
-            PlayerInfo player = new PlayerInfo(playerName, password);
+        if (checkPlayerName(playerName)) {
+            String salt = UUID.randomUUID().toString();
+            String encodePassword = encodeWithSalt(password, salt);
+
+            PlayerInfo player = new PlayerInfo(playerName, encodePassword, salt);
             try {
                 playerService.save(player);
                 feedback.setSuccess(true)
@@ -159,20 +159,20 @@ public class PlayerDataFetcher {
         if (!StpUtil.isLogin()) {
             feedback.setMessage("请登录");
             return feedback;
-        } else if (checkPassword(oldPassword) && checkPassword(newPassword)) {
-            String playerName = StpUtil.getLoginIdAsString();
-            String password = playerService.getPasswordByPlayerName(playerName);
-            if (password.equals(oldPassword)) {
-                playerService.updatePassword(newPassword, playerName);
-                feedback.setSuccess(true)
-                        .setMessage("密码修改成功, 请重新登录");
-                StpUtil.logout();
-            } else {
-                feedback.setMessage("原密码错误, 请重新输入");
-            }
-        } else {
-            feedback.setMessage("请检查密码格式是否正确");
         }
+
+        String playerName = StpUtil.getLoginIdAsString();
+        String password = playerService.getPasswordByPlayerName(playerName);
+        if (comparePassword(playerName, oldPassword)) {
+            String salt = UUID.randomUUID().toString();
+            playerService.updatePassword(encodeWithSalt(newPassword, salt), salt, playerName);
+            feedback.setSuccess(true)
+                    .setMessage("密码修改成功, 请重新登录");
+            StpUtil.logout();
+        } else {
+            feedback.setMessage("原密码错误, 请重新输入");
+        }
+
 
         return feedback;
     }
@@ -261,10 +261,6 @@ public class PlayerDataFetcher {
         return playerName.length() >= minPlayerNameLen && playerName.length() <= maxPlayerNameLen;
     }
 
-    private boolean checkPassword(String password) {
-        return password.matches("^(?=.*[a-zA-Z])(?=.*\\d)[a-zA-Z\\d]{6,16}$");
-    }
-
     private boolean checkEmail(String email) {
         // 邮箱为空代表清除邮箱
         return email == null || email.matches("^[a-z0-9A-Z]+[-|a-z0-9A-Z._]+@([a-z0-9A-Z]+(-[a-z0-9A-Z]+)?\\.)+[a-z]{2,}$");
@@ -273,5 +269,20 @@ public class PlayerDataFetcher {
     private boolean checkPhone(String phone) {
         // 同上
         return phone == null || phone.matches("^1[3456789]\\d{9}$");
+    }
+
+    private boolean checkPassword(String password) {
+        return password.matches("^(?=.*[a-zA-Z])(?=.*\\d)[a-zA-Z\\d]{6,16}$");
+    }
+
+    private String encodeWithSalt(String password, String salt) {
+        return Hashing.sha256()
+                .hashString(password + salt, StandardCharsets.UTF_8)
+                .toString();
+    }
+
+    private boolean comparePassword(String playerName, String input) {
+        return playerService.getPasswordByPlayerName(playerName)
+                .equals(encodeWithSalt(input, playerService.getSalt(playerName)));
     }
 }

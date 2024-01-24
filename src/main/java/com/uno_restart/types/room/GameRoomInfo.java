@@ -30,7 +30,7 @@ public class GameRoomInfo {
     private LinkedList<RoomPlayerState> joinedPlayer;
 
     // 记录已准备玩家数量
-    private int readyCnt;
+    private int readyPlayerCnt;
 
     public void quit(String playerName) {
         --currentPlayerCount;
@@ -60,8 +60,8 @@ public class GameRoomInfo {
                 .findFirst();
         first.ifPresent(roomPlayerState -> {
             roomPlayerState.setIsReady(isReady);
-            if (isReady) ++readyCnt;
-            else --readyCnt;
+            if (isReady) ++readyPlayerCnt;
+            else --readyPlayerCnt;
         });
     }
 
@@ -82,6 +82,6 @@ public class GameRoomInfo {
             this.password = password;
         }
 
-        this.readyCnt = 0;
+        this.readyPlayerCnt = 0;
     }
 }
