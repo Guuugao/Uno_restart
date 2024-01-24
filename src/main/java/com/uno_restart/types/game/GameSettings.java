@@ -7,11 +7,12 @@ import lombok.Data;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
 
 @Data
 @AllArgsConstructor
 public class GameSettings {
     @NotNull
-    private ArrayList<PlayerInfo> players;
+    private LinkedList<PlayerInfo> players;
     private GameRoomInfo roomInfo;
 }

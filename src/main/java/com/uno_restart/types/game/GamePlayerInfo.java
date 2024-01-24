@@ -5,6 +5,7 @@ import lombok.Data;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
 
 @Data
 public class GamePlayerInfo {
@@ -13,5 +14,5 @@ public class GamePlayerInfo {
     @NotNull
     private Integer restCardCount;
     @NotNull
-    private ArrayList<GameCard> cards;
+    private LinkedList<GameCard> cards;
 }

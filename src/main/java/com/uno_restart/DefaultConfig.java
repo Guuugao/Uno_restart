@@ -3,9 +3,11 @@ package com.uno_restart;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.scheduling.annotation.EnableAsync;
 
 import java.util.Base64;
 
+@EnableAsync
 @Configuration
 @MapperScan("com.uno_restart.mapper")
 public class DefaultConfig {

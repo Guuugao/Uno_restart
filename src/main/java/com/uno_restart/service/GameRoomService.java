@@ -10,10 +10,11 @@ import org.springframework.stereotype.Component;
 import java.util.HashMap;
 import java.util.Optional;
 
+// TODO 很多方法前面都进行了一些检查, 但是可能方法调用前就已经检查了一次, 整合简化一下
 @Slf4j
 @Getter
 @Component
-public class GameService {
+public class GameRoomService {
     // 玩家id及其及加入的房间
     // key: playerName value: roomID
     private final HashMap<String, String> playerRooms;
@@ -29,6 +30,15 @@ public class GameService {
 
     public boolean canCreate(String playerName) {
         return playerRooms.containsKey(playerName);
+    }
+
+    public boolean isFull(String roomID) {
+        GameRoomInfo room = rooms.get(roomID);
+        return room.getCurrentPlayerCount().equals(room.getMaxPlayerCount());
+    }
+
+    public boolean isRoomExists(String roomID) {
+        return rooms.containsKey(roomID);
     }
 
     public GameRoomInfo createRoom(String roomName, Boolean isPrivate,
@@ -77,6 +87,13 @@ public class GameService {
         room.ready(playerName, isReady);
     }
 
+
+    public boolean canStart(String roomID) {
+        GameRoomInfo room = rooms.get(roomID);
+        // TODO 开始游戏需要检查玩家数量是否大于最小玩家数量, 但是方便测试, 先不写
+        return room.getCurrentPlayerCount().equals(room.getReadyCnt());
+    }
+
     public RoomPlayerState getPlayerState(String playerName){
         // 未加入房间, 不做处理
         if (!playerRooms.containsKey(playerName)) return null;
@@ -95,7 +112,7 @@ public class GameService {
         return rooms.get(playerRooms.get(playerName));
     }
 
-    public GameService() {
+    public GameRoomService() {
         playerRooms = new HashMap<>();
         publicRooms = new HashMap<>();
         privateRooms = new HashMap<>();

@@ -1,21 +1,33 @@
 package com.uno_restart.dataFetcher;
 
+import cn.dev33.satoken.exception.NotLoginException;
 import cn.dev33.satoken.stp.StpUtil;
 import com.netflix.graphql.dgs.DgsComponent;
 import com.netflix.graphql.dgs.DgsMutation;
 import com.netflix.graphql.dgs.DgsQuery;
-import com.uno_restart.service.GameService;
+import com.netflix.graphql.dgs.DgsSubscription;
+import com.uno_restart.Event.GameStartEvent;
+import com.uno_restart.service.GameRoomService;
 import com.uno_restart.service.PlayerService;
+import com.uno_restart.types.game.GameSettings;
 import com.uno_restart.types.player.PlayerInfo;
 import com.uno_restart.types.room.GameRoomFeedback;
 import com.uno_restart.types.room.GameRoomInfo;
+import com.uno_restart.types.room.RoomPlayerState;
 import graphql.relay.*;
 import lombok.extern.slf4j.Slf4j;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEvent;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.ApplicationListener;
+import org.springframework.context.ConfigurableApplicationContext;
+import reactor.core.publisher.Mono;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -24,19 +36,26 @@ import java.util.stream.Stream;
 // TODO 查询房间内玩家信息可以用sub datafetcher实现
 @Slf4j
 @DgsComponent
-public class RoomDataFetcher {
+public class GameRoomDataFetcher {
     @Autowired
     PlayerService playerService;
     @Autowired
-    GameService gameService;
+    GameRoomService gameRoomService;
     @Autowired
     Base64.Encoder encoder;
     @Autowired
     Base64.Decoder decoder;
+    @Autowired
+    private ConfigurableApplicationContext context;
+
+    private static final int minPlayerCnt = 2;
+    private static final int maxPlayerCnt = 8;
+    private static final int minRoomNameLen = 2;
+    private static final int maxRoomNameLen = 8;
 
     @DgsQuery
     public GameRoomInfo queryRoomByID(String roomID) {
-        return gameService.getRoom(roomID);
+        return gameRoomService.getRoom(roomID);
     }
 
     @DgsQuery
@@ -44,7 +63,7 @@ public class RoomDataFetcher {
         StpUtil.checkLogin();
         String cursor = (after == null) ? null : new String(decoder.decode(after));
 
-        Stream<GameRoomInfo> roomInfoStream = gameService.getPublicRooms().values()
+        Stream<GameRoomInfo> roomInfoStream = gameRoomService.getPublicRooms().values()
                 .stream()
                 .filter(room -> room.getRoomName().matches(roomName + ".*"));
         if (after != null && after.isEmpty()) {
@@ -52,8 +71,8 @@ public class RoomDataFetcher {
         }
         List<GameRoomInfo> rooms = new ArrayList<>(
                 roomInfoStream
-                .limit(first + 2)
-                .toList());
+                        .limit(first + 2)
+                        .toList());
 
         boolean hasPreviousPage = false;
         boolean hasNextPage = false;
@@ -72,13 +91,13 @@ public class RoomDataFetcher {
 
         List<Edge<GameRoomInfo>> edges =
                 rooms.stream()
-                .limit(first)
-                .map(roomInfo -> new DefaultEdge<>(roomInfo,
-                        new DefaultConnectionCursor(
-                                encoder.encodeToString(
-                                        roomInfo.getRoomName().getBytes(
-                                                StandardCharsets.UTF_8)))))
-                .collect(Collectors.toList());
+                        .limit(first)
+                        .map(roomInfo -> new DefaultEdge<>(roomInfo,
+                                new DefaultConnectionCursor(
+                                        encoder.encodeToString(
+                                                roomInfo.getRoomName().getBytes(
+                                                        StandardCharsets.UTF_8)))))
+                        .collect(Collectors.toList());
 
         // 没有数据, 则游标为空
         ConnectionCursor startCursor = !edges.isEmpty() ? edges.get(0).getCursor() : new DefaultConnectionCursor("null");
@@ -100,7 +119,7 @@ public class RoomDataFetcher {
 
         String cursor = (after == null) ? null : new String(decoder.decode(after));
 
-        Stream<GameRoomInfo> roomInfoStream = gameService.getPublicRooms().values()
+        Stream<GameRoomInfo> roomInfoStream = gameRoomService.getPublicRooms().values()
                 .stream();
         if (after != null && after.isEmpty()) {
             roomInfoStream = roomInfoStream.filter(room -> room.getRoomName().compareTo(cursor) >= 0);
@@ -157,13 +176,13 @@ public class RoomDataFetcher {
             feedback.setMessage("请登录");
         } else {
             String playerName = StpUtil.getLoginIdAsString();
-            GameRoomInfo room = gameService.whichRoom(playerName);
+            GameRoomInfo room = gameRoomService.whichRoom(playerName);
             if (room != null) {
                 feedback.setSuccess(true)
                         .setMessage("玩家当前位于房间 " + room.getRoomName())
                         .setIsInsideRoom(true)
                         .setRoom(room)
-                        .setSelf(gameService.getPlayerState(playerName));
+                        .setSelf(gameRoomService.getPlayerState(playerName));
             } else {
                 feedback.setSuccess(true)
                         .setMessage("玩家 " + playerName + " 未加入任何房间");
@@ -172,11 +191,12 @@ public class RoomDataFetcher {
 
         return feedback;
     }
+
     /* TODO
-    * UNO游戏原则上允许2-10人参与。
-    * 但为了保证游戏的趣味性，降低运气因素，一般建议3-4人参与最佳。
-    * 如果人数超过5个，可以考虑多加1副牌，使游戏进程更顺利
-    * */
+     * UNO游戏原则上允许2-10人参与。
+     * 但为了保证游戏的趣味性，降低运气因素，一般建议3-4人参与最佳。
+     * 如果人数超过5个，可以考虑多加1副牌，使游戏进程更顺利
+     * */
     @DgsMutation
     public GameRoomFeedback roomCreate(String roomName, Integer maxPlayerCount, Boolean isPrivate, String password) {
         GameRoomFeedback feedback = new GameRoomFeedback(false, false);
@@ -187,41 +207,43 @@ public class RoomDataFetcher {
         }
         String playerName = StpUtil.getLoginIdAsString();
 
-        if (gameService.canCreate(playerName)) {
+        if (gameRoomService.canCreate(playerName)) {
             feedback.setMessage("创建失败, 同一玩家禁止创建多个房间");
-        } else if (!checkMaxPlayerCount(maxPlayerCount) || !checkRoomName(roomName)) {
+        } else if (!checkPlayerCount(maxPlayerCount) || !checkRoomName(roomName)) {
             feedback.setMessage("创建房间失败, 请检查房间设置");
         } else {
             PlayerInfo player = playerService.getById(playerName);
-            GameRoomInfo room = gameService.createRoom(roomName, isPrivate, maxPlayerCount, password);
+            GameRoomInfo room = gameRoomService.createRoom(roomName, isPrivate, maxPlayerCount, password);
             String roomID = room.getRoomID();
 
-            gameService.join(player, roomID, password);
+            gameRoomService.join(player, roomID, password);
 
             feedback.setSuccess(true)
                     .setMessage("创建房间成功")
                     .setIsInsideRoom(true)
                     .setRoom(room)
-                    .setSelf(gameService.getPlayerState(playerName));
+                    .setSelf(gameRoomService.getPlayerState(playerName));
         }
 
         return feedback;
     }
 
     @DgsMutation
-    public GameRoomFeedback roomJoin(String roomId, String password) {
+    public GameRoomFeedback roomJoin(String roomID, String password) {
         GameRoomFeedback feedback = new GameRoomFeedback(false, false);
 
         if (!StpUtil.isLogin()) {
             feedback.setMessage("请登录");
         } else {
             PlayerInfo player = playerService.getById(StpUtil.getLoginIdAsString());
-            if (gameService.join(player, roomId, password)) {
+            if (gameRoomService.isFull(roomID)) {
+                feedback.setMessage("房间已满");
+            } else if (gameRoomService.join(player, roomID, password)) {
                 feedback.setSuccess(true)
                         .setMessage("加入成功")
                         .setIsInsideRoom(true)
-                        .setRoom(gameService.getRoom(roomId))
-                        .setSelf(gameService.getPlayerState(player.getPlayerName()));
+                        .setRoom(gameRoomService.getRoom(roomID))
+                        .setSelf(gameRoomService.getPlayerState(player.getPlayerName()));
             } else {
                 feedback.setMessage("加入失败, 密码错误");
             }
@@ -231,13 +253,13 @@ public class RoomDataFetcher {
     }
 
     @DgsMutation
-    public GameRoomFeedback roomQuit(){
+    public GameRoomFeedback roomQuit() {
         GameRoomFeedback feedback = new GameRoomFeedback(false, false);
 
         if (!StpUtil.isLogin()) {
             feedback.setMessage("请登录");
         } else {
-            if (gameService.quit(StpUtil.getLoginIdAsString())) {
+            if (gameRoomService.quit(StpUtil.getLoginIdAsString())) {
                 feedback.setSuccess(true)
                         .setMessage("退出房间成功");
             } else {
@@ -249,48 +271,81 @@ public class RoomDataFetcher {
     }
 
     @DgsMutation
-    public GameRoomFeedback roomPlayerReady(String roomID){
+    public GameRoomFeedback roomPlayerReady(String roomID) {
         GameRoomFeedback feedback = new GameRoomFeedback(false, false);
 
         if (!StpUtil.isLogin()) {
             feedback.setMessage("请登录");
         } else {
             String playerName = StpUtil.getLoginIdAsString();
-            gameService.ready(roomID, playerName, true);
+            gameRoomService.ready(roomID, playerName, true);
+
+            // 若玩家全部准备并且玩家数量大于最小玩家数量, 则开始
+            if (gameRoomService.canStart(roomID)) {
+                context.publishEvent(new GameStartEvent(roomID));
+            }
+
             feedback.setSuccess(true)
                     .setMessage("玩家 " + playerName + " 已准备")
                     .setIsInsideRoom(true)
-                    .setSelf(gameService.getPlayerState(playerName))
-                    .setRoom(gameService.getRoom(roomID));
+                    .setSelf(gameRoomService.getPlayerState(playerName))
+                    .setRoom(gameRoomService.getRoom(roomID));
         }
 
         return feedback;
     }
 
     @DgsMutation
-    public GameRoomFeedback roomPlayerUnready(String roomID){
+    public GameRoomFeedback roomPlayerUnready(String roomID) {
         GameRoomFeedback feedback = new GameRoomFeedback(false, false);
 
         if (!StpUtil.isLogin()) {
             feedback.setMessage("请登录");
         } else {
             String playerName = StpUtil.getLoginIdAsString();
-            gameService.ready(roomID, playerName, false);
+            gameRoomService.ready(roomID, playerName, false);
+
             feedback.setSuccess(true)
                     .setMessage("玩家 " + playerName + " 已取消准备")
                     .setIsInsideRoom(true)
-                    .setSelf(gameService.getPlayerState(playerName))
-                    .setRoom(gameService.getRoom(roomID));
+                    .setSelf(gameRoomService.getPlayerState(playerName))
+                    .setRoom(gameRoomService.getRoom(roomID));
         }
 
         return feedback;
     }
 
-    private boolean checkMaxPlayerCount(Integer maxPlayerCount) {
-        return maxPlayerCount >= 2 && maxPlayerCount <= 10;
+    @DgsSubscription
+    public Mono<GameSettings> roomWaitStart(String roomID, String token) {
+        // 此处检查是否登录的手段都会失败, 因为使用websocket, 无法读取HTTP请求头
+        if (!StpUtil.isLogin(StpUtil.getLoginIdByToken(token))) {
+            return Mono.error(new RuntimeException("请登录"));
+        } if (!gameRoomService.isRoomExists(roomID)) {
+            return Mono.error(new RuntimeException("游戏房间不存在!"));
+        } else {
+            return Mono.create(sink -> {
+                context.addApplicationListener(new ApplicationListener<GameStartEvent>() {
+                    @Override
+                    public void onApplicationEvent(@NotNull GameStartEvent event) {
+                        GameRoomInfo room = gameRoomService.getRoom(event.getSource().toString());
+                        LinkedList<PlayerInfo> players = room.getJoinedPlayer().stream()
+                                .map(RoomPlayerState::getPlayer)
+                                .collect(Collectors.toCollection(LinkedList::new));
+                        GameSettings gameSettings = new GameSettings(players, room);
+                        room.setIsPlaying(true);
+                        sink.success(gameSettings);
+                    }
+                });
+            });
+
+        }
+    }
+
+    private boolean checkPlayerCount(Integer playerCount) {
+        return playerCount >= minPlayerCnt && playerCount <= maxPlayerCnt;
     }
 
     private boolean checkRoomName(String roomName) {
-        return roomName.length() >= 2 && roomName.length() <= 8;
+        return roomName.length() >= minRoomNameLen && roomName.length() <= maxRoomNameLen;
     }
 }

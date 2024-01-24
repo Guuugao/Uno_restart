@@ -41,6 +41,8 @@ public class PlayerDataFetcher {
             Arrays.asList("image/jpeg", "image/png", "image/gif"));
     private static final long allowedAvatarSize = 3 * 1024 * 1024;
 
+    private static final int minPlayerNameLen = 2;
+    private static final int maxPlayerNameLen = 8;
 
     @DgsQuery
     public PlayerInfo me() {
@@ -256,7 +258,7 @@ public class PlayerDataFetcher {
     }
 
     private boolean checkPlayerName(String playerName) {
-        return playerName.length() >= 2 && playerName.length() <= 8;
+        return playerName.length() >= minPlayerNameLen && playerName.length() <= maxPlayerNameLen;
     }
 
     private boolean checkPassword(String password) {

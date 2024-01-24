@@ -39,7 +39,8 @@ type Mutation {
 }
 
 # 订阅
+# !!! 无法使用http头获取用户信息, 需要手动传递token !!!
 type Subscription {
-    roomWaitStart(roomID: ID!) : GameSettings
-    gameWaitNextReaction(roomID: ID!) : GameTurnsFeedback
+    roomWaitStart(roomID: ID!, token: ID!) : GameSettings
+    gameWaitNextReaction(roomID: ID!, token: ID!) : GameTurnsFeedback
 }

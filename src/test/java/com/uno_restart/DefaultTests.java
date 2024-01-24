@@ -1,104 +1,58 @@
 package com.uno_restart;
 
-import cn.dev33.satoken.fun.SaParamRetFunction;
-import cn.dev33.satoken.stp.StpUtil;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.uno_restart.service.PlayerService;
-import com.uno_restart.types.player.PlayerContact;
-import com.uno_restart.types.player.PlayerHistory;
-import com.uno_restart.types.player.PlayerInfo;
-import com.uno_restart.util.RoomIDUtil;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.ApplicationEvent;
+import org.springframework.context.ApplicationListener;
+import org.springframework.stereotype.Component;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.FluxSink;
 
-import java.util.HashMap;
-import java.util.List;
+import java.time.Duration;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 
-@SpringBootTest
+@SpringBootTest(classes = {DefaultTests.class})
 class DefaultTests {
-    @Autowired
-    PlayerService service;
-
     @Test
-    void select() {
-        List<PlayerInfo> playerInfos = service.selectPlayerInfoPage("Thh", 5, null);
-        playerInfos.forEach(System.out::println);
+    void flux_interval() throws InterruptedException {
+        Flux.interval(Duration.ofSeconds(1))
+                .map(input -> {
+                    if (input < 3) return "tick " + input;
+                    throw new RuntimeException("boom");
+                })
+                .onErrorReturn("Uh oh")
+                .subscribe(System.out::println);
+
+        TimeUnit.SECONDS.sleep(5);
     }
 
     @Test
-    void update() throws JsonProcessingException {
-        LambdaUpdateWrapper<PlayerInfo> wrapper = new LambdaUpdateWrapper<>();
-        ObjectMapper mapper = new ObjectMapper();
-        PlayerContact contact = new PlayerContact(null, null);
-        wrapper.eq(PlayerInfo::getPlayerName, "admin").set(PlayerInfo::getContact,
-                mapper.writeValueAsString(contact));
-        service.update(wrapper);
-    }
-    @Test
-    void reference(){
-        SaParamRetFunction<PlayerInfo, String> getPassword = PlayerInfo::getPassword;
-        System.out.println(getPassword.toString());
-        System.out.println(getPassword.getClass());
+    void foo() throws InterruptedException {
+        Future<Integer> future = new CompletableFuture<>();
+        Flux<String> flux = Flux.generate(
+                () -> 0, // 初始state值
+                (state, sink) -> {
+                    sink.next("3 x " + state + " = " + 3 * state); // 产生数据是同步的，每次产生一个数据
+                    if (state == 10) {
+                        sink.complete();
+                    }
+                    return state + 1; // 改变状态
+                },
+                (state) -> System.out.println("state: " + state)); // 最后状态值
+        // 订阅时触发requset->sink.next顺序产生数据
+        // 生产一个数据消费一个
+        flux.subscribe(System.out::println);
+
+        TimeUnit.SECONDS.sleep(5);
     }
 
-    @Test
-    void insert() {
-        PlayerInfo playerInfo = new PlayerInfo("demo", "root")
-                .setContact(new PlayerContact("fackemail@uno.com", "12345678910"))
-                .setHistory(new PlayerHistory(1, 3));
-        service.save(playerInfo);
-    }
+    Consumer<String> producer;
 
     @Test
-    void saToken() {
-        StpUtil.login("admin");
-        System.out.println(StpUtil.getTokenName());
-        System.out.println(StpUtil.getTokenValue());
-        System.out.println(StpUtil.getLoginIdByToken(StpUtil.getTokenValue()));
-        System.out.println(StpUtil.getTokenTimeout());
-        System.out.println(StpUtil.getTokenTimeout(StpUtil.getTokenValue()));
-        System.out.println(StpUtil.getTokenInfo());
-        StpUtil.logout("admin");
-    }
-
-    @Test
-    void roomID(){
-        for (int i = 0; i< 10; ++i){
-            System.out.println("-----------------");
-            System.out.println(System.currentTimeMillis());
-            System.out.println(RoomIDUtil.getNextId());
-        }
-    }
-
-    @Test
-    void jsonParse() throws JsonProcessingException {
-        ObjectMapper objectMapper = new ObjectMapper();
-        PlayerContact contact = new PlayerContact(null, null);
-        System.out.println(contact.getEmail());
-        System.out.println(contact.getPhone());
-        System.out.println(objectMapper.writeValueAsString(contact));
-    }
-
-    @Test
-    void wapper() {
-        LambdaQueryWrapper<PlayerInfo> wrapper = new LambdaQueryWrapper<>( );
-        wrapper.clear();
-        wrapper.select();
-        List<PlayerInfo> list = service.list(wrapper);
-        list.forEach(System.out::println);
-        wrapper.select(PlayerInfo::getPassword).eq(PlayerInfo::getPlayerName, "admin");
-        PlayerInfo one = service.getOneOpt(wrapper).get();
-        System.out.println(one);
-    }
-
-    @Test
-    void mapTest() {
-        HashMap<String, PlayerInfo> map_1 = new HashMap<>();
-        map_1.remove("demo");
+    public void testCreate() throws InterruptedException {
     }
 }

@@ -4,8 +4,11 @@ import com.uno_restart.types.player.PlayerInfo;
 import com.uno_restart.util.RoomIDUtil;
 import lombok.Data;
 import org.jetbrains.annotations.NotNull;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.Optional;
 
 @Data
@@ -27,7 +30,10 @@ public class GameRoomInfo {
     @NotNull
     private Integer currentPlayerCount;
     @NotNull
-    private ArrayList<RoomPlayerState> joinedPlayer;
+    private LinkedList<RoomPlayerState> joinedPlayer;
+
+    // 记录已准备玩家数量
+    private int readyCnt;
 
     public void quit(String playerName) {
         --currentPlayerCount;
@@ -55,7 +61,11 @@ public class GameRoomInfo {
         Optional<RoomPlayerState> first = joinedPlayer.stream()
                 .filter(playerState -> playerState.getPlayer().getPlayerName().equals(playerName))
                 .findFirst();
-        first.ifPresent(roomPlayerState -> roomPlayerState.setIsReady(isReady));
+        first.ifPresent(roomPlayerState -> {
+            roomPlayerState.setIsReady(isReady);
+            if (isReady) ++readyCnt;
+            else --readyCnt;
+        });
     }
 
     public GameRoomInfo(@NotNull String roomName, @NotNull Boolean isPrivate,
@@ -66,7 +76,7 @@ public class GameRoomInfo {
         this.isPrivate = isPrivate;
         this.maxPlayerCount = maxPlayerCount;
         this.currentPlayerCount = 0;
-        this.joinedPlayer = new ArrayList<>();
+        this.joinedPlayer = new LinkedList<>();
 
         if (password == null || password.isEmpty()) {
             this.requirePassword = false;
@@ -74,5 +84,7 @@ public class GameRoomInfo {
             this.requirePassword = true;
             this.password = password;
         }
+
+        this.readyCnt = 0;
     }
 }
