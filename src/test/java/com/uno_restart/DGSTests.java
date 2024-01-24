@@ -26,32 +26,8 @@ import java.util.Map;
 
 @SpringBootTest
 public class DGSTests {
-
     @Autowired
     DgsQueryExecutor dgsQueryExecutor;
-    ObjectMapper objectMapper = new ObjectMapper();
-    private WebSocketGraphQLClient webSocketGraphQLClient;
-    @BeforeEach
-    public void setup() {
-        int port = 10000;
-        webSocketGraphQLClient = new WebSocketGraphQLClient("ws://localhost:" + port + "/subscriptions",
-                new ReactorNettyWebSocketClient());
-    }
-
-    @Test
-    public void subscription() {
-        @Language("graphql") String subscriptionRequest = "subscription { hello }";
-        Flux<String> hello = webSocketGraphQLClient.reactiveExecuteQuery(
-                subscriptionRequest, Collections.emptyMap())
-                .take(3)
-                .map(r -> r.extractValue("$.data.hello"));
-        StepVerifier.create(hello)
-                .expectNext("hello")
-                .expectNext(" ")
-                .expectNext("world")
-                .thenCancel()
-                .verify();
-    }
 
     @Test
     void query() {

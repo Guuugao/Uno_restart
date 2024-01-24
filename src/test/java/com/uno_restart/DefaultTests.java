@@ -1,5 +1,6 @@
 package com.uno_restart;
 
+import cn.dev33.satoken.stp.StpUtil;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import reactor.core.publisher.Flux;
@@ -49,6 +50,7 @@ class DefaultTests {
     Consumer<String> producer;
 
     @Test
-    public void testCreate() throws InterruptedException {
+    public void testCreate() {
+        System.out.println(StpUtil.getLoginType());
     }
 }

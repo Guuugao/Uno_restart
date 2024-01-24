@@ -1,11 +1,14 @@
 package com.uno_restart.dataFetcher;
 
+import cn.dev33.satoken.exception.NotLoginException;
 import cn.dev33.satoken.stp.StpUtil;
 import com.netflix.graphql.dgs.DgsComponent;
 import com.netflix.graphql.dgs.DgsMutation;
 import com.netflix.graphql.dgs.DgsQuery;
 import com.netflix.graphql.dgs.DgsSubscription;
 import com.uno_restart.Event.GameStartEvent;
+import com.uno_restart.Exception.RoomNotExistsException;
+import com.uno_restart.Exception.playerNotLoginException;
 import com.uno_restart.service.GameRoomService;
 import com.uno_restart.service.PlayerService;
 import com.uno_restart.types.game.GameSettings;
@@ -52,6 +55,7 @@ public class GameRoomDataFetcher {
 
     @DgsQuery
     public GameRoomInfo queryRoomByID(String roomID) {
+        StpUtil.checkLogin();
         return gameRoomService.getRoom(roomID);
     }
 
@@ -202,15 +206,13 @@ public class GameRoomDataFetcher {
             feedback.setMessage("请登录");
             return feedback;
         }
-        String playerName = StpUtil.getLoginIdAsString();
 
-        if (gameRoomService.canCreate(playerName)) {
-            feedback.setMessage("创建失败, 同一玩家禁止创建多个房间");
-        } else if (!checkPlayerCount(maxPlayerCount) || !checkRoomName(roomName)) {
+        if (!checkPlayerCount(maxPlayerCount) || !checkRoomName(roomName)) {
             feedback.setMessage("创建房间失败, 请检查房间设置");
         } else {
+            String playerName = StpUtil.getLoginIdAsString();
             PlayerInfo player = playerService.getById(playerName);
-            GameRoomInfo room = gameRoomService.createRoom(roomName, isPrivate, maxPlayerCount, password);
+            GameRoomInfo room = gameRoomService.createRoom(roomName, isPrivate, maxPlayerCount, password, playerName);
             String roomID = room.getRoomID();
 
             gameRoomService.join(player, roomID, password);
@@ -233,7 +235,7 @@ public class GameRoomDataFetcher {
             feedback.setMessage("请登录");
         } else {
             PlayerInfo player = playerService.getById(StpUtil.getLoginIdAsString());
-            if (gameRoomService.isFull(roomID)) {
+            if (gameRoomService.isRoomFull(roomID)) {
                 feedback.setMessage("房间已满");
             } else if (gameRoomService.join(player, roomID, password)) {
                 feedback.setSuccess(true)
@@ -316,9 +318,9 @@ public class GameRoomDataFetcher {
     public Mono<GameSettings> roomWaitStart(String roomID, String token) {
         // 此处检查是否登录的手段都会失败, 因为使用websocket, 无法读取HTTP请求头
         if (!StpUtil.isLogin(StpUtil.getLoginIdByToken(token))) {
-            return Mono.error(new RuntimeException("请登录"));
-        } if (!gameRoomService.isRoomExists(roomID)) {
-            return Mono.error(new RuntimeException("游戏房间不存在!"));
+            return Mono.error(new playerNotLoginException("请登录"));
+        } if (gameRoomService.isRoomNotExists(roomID)) {
+            return Mono.error(new RoomNotExistsException("游戏房间不存在"));
         } else {
             return Mono.create(sink -> {
                 context.addApplicationListener(new ApplicationListener<GameStartEvent>() {

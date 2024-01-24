@@ -10,7 +10,6 @@ import org.springframework.stereotype.Component;
 import java.util.HashMap;
 import java.util.Optional;
 
-// TODO 很多方法前面都进行了一些检查, 但是可能方法调用前就已经检查了一次, 整合简化一下
 @Slf4j
 @Getter
 @Component
@@ -28,21 +27,21 @@ public class GameRoomService {
     // key: roomID value: roomInfo
     private final HashMap<String, GameRoomInfo> rooms;
 
-    public boolean canCreate(String playerName) {
-        return playerRooms.containsKey(playerName);
-    }
-
-    public boolean isFull(String roomID) {
+    public boolean isRoomFull(String roomID) {
         GameRoomInfo room = rooms.get(roomID);
         return room.getCurrentPlayerCount().equals(room.getMaxPlayerCount());
     }
-
-    public boolean isRoomExists(String roomID) {
-        return rooms.containsKey(roomID);
+    public boolean isRoomNotExists(String roomID) {
+        return !rooms.containsKey(roomID);
+    }
+    private boolean isPlayerNotJoinRoom(String playerName) {
+        return !playerRooms.containsKey(playerName);
     }
 
     public GameRoomInfo createRoom(String roomName, Boolean isPrivate,
-                           Integer maxPlayerCount, String password) {
+                           Integer maxPlayerCount, String password, String playerName) {
+        // 若已加入房间, 则退出
+        quit(playerName);
         GameRoomInfo room = new GameRoomInfo(roomName, isPrivate, maxPlayerCount, password);
         rooms.put(room.getRoomID(), room);
 
@@ -53,8 +52,6 @@ public class GameRoomService {
     }
 
     public boolean join(PlayerInfo player, String roomID, String password) {
-        // 若房间不存在, 不做处理
-        if (!rooms.containsKey(roomID)) return false;
         // 若已加入房间, 则先退出
         quit(player.getPlayerName());
         GameRoomInfo room = rooms.get(roomID);
@@ -65,7 +62,7 @@ public class GameRoomService {
 
     public boolean quit(String playerName) {
         // 若玩家未加入房间, 则不处理
-        if (!playerRooms.containsKey(playerName)) return false;
+        if (isPlayerNotJoinRoom(playerName)) return false;
         String roomID = playerRooms.get(playerName);
         playerRooms.remove(playerName);
         GameRoomInfo room = rooms.get(roomID);
@@ -82,7 +79,7 @@ public class GameRoomService {
 
     public void ready(String roomID, String playerName, boolean isReady){
         // 若玩家未加入房间, 则不处理
-        if (!playerRooms.containsKey(playerName)) return;
+        if (isPlayerNotJoinRoom(playerName)) return;
         GameRoomInfo room = rooms.get(roomID);
         room.ready(playerName, isReady);
     }
@@ -96,7 +93,7 @@ public class GameRoomService {
 
     public RoomPlayerState getPlayerState(String playerName){
         // 未加入房间, 不做处理
-        if (!playerRooms.containsKey(playerName)) return null;
+        if (isPlayerNotJoinRoom(playerName)) return null;
         GameRoomInfo room = rooms.get(playerRooms.get(playerName));
         Optional<RoomPlayerState> first = room.getJoinedPlayer().stream()
                 .filter(playerState -> playerState.getPlayer().getPlayerName().equals(playerName))
