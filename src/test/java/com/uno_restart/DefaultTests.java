@@ -2,11 +2,7 @@ package com.uno_restart;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.ApplicationEvent;
-import org.springframework.context.ApplicationListener;
-import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.FluxSink;
 
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
