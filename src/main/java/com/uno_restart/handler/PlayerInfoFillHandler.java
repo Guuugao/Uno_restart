@@ -1,14 +1,12 @@
 package com.uno_restart.handler;
 
 import com.baomidou.mybatisplus.core.handlers.MetaObjectHandler;
-import com.google.common.hash.Hashing;
 import com.uno_restart.types.player.PlayerContact;
 import com.uno_restart.types.player.PlayerHistory;
 import org.apache.ibatis.reflection.MetaObject;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
-import java.util.UUID;
 
 @Component
 public class PlayerInfoFillHandler implements MetaObjectHandler {

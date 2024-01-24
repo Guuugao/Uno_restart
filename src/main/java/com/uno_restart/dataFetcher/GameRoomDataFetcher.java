@@ -322,20 +322,18 @@ public class GameRoomDataFetcher {
         } if (gameRoomService.isRoomNotExists(roomID)) {
             return Mono.error(new RoomNotExistsException("游戏房间不存在"));
         } else {
-            return Mono.create(sink -> {
-                context.addApplicationListener(new ApplicationListener<GameStartEvent>() {
-                    @Override
-                    public void onApplicationEvent(@NotNull GameStartEvent event) {
-                        GameRoomInfo room = gameRoomService.getRoom(event.getSource().toString());
-                        LinkedList<PlayerInfo> players = room.getJoinedPlayer().stream()
-                                .map(RoomPlayerState::getPlayer)
-                                .collect(Collectors.toCollection(LinkedList::new));
-                        GameSettings gameSettings = new GameSettings(players, room);
-                        room.setIsPlaying(true);
-                        sink.success(gameSettings);
-                    }
-                });
-            });
+            return Mono.create(sink -> context.addApplicationListener(new ApplicationListener<GameStartEvent>() {
+                @Override
+                public void onApplicationEvent(@NotNull GameStartEvent event) {
+                    GameRoomInfo room = gameRoomService.getRoom(event.getSource().toString());
+                    LinkedList<PlayerInfo> players = room.getJoinedPlayer().stream()
+                            .map(RoomPlayerState::getPlayer)
+                            .collect(Collectors.toCollection(LinkedList::new));
+                    GameSettings gameSettings = new GameSettings(players, room);
+                    room.setIsPlaying(true);
+                    sink.success(gameSettings);
+                }
+            }));
 
         }
     }

@@ -1,7 +1,6 @@
 package com.uno_restart;
 
 import cn.dev33.satoken.stp.StpUtil;
-import com.google.common.hash.HashCode;
 import com.google.common.hash.Hashing;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -10,10 +9,7 @@ import reactor.core.publisher.Flux;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
 
 
 @SpringBootTest(classes = {DefaultTests.class})
