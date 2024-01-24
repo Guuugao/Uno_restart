@@ -1,25 +1,18 @@
 package com.uno_restart;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jayway.jsonpath.TypeRef;
 import com.netflix.graphql.dgs.DgsQueryExecutor;
-import com.netflix.graphql.dgs.client.WebSocketGraphQLClient;
 import com.netflix.graphql.dgs.client.codegen.GraphQLQueryRequest;
 import com.uno_restart.generated.client.PlayerLoginGraphQLQuery;
 import com.uno_restart.generated.client.PlayerLoginProjectionRoot;
 import org.intellij.lang.annotations.Language;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.web.reactive.socket.client.ReactorNettyWebSocketClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.mock.web.MockMultipartFile;
-import reactor.core.publisher.Flux;
-import reactor.test.StepVerifier;
 
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
