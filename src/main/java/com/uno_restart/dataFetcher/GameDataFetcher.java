@@ -9,17 +9,12 @@ import com.uno_restart.exception.playerNotLoginException;
 import com.uno_restart.service.GameService;
 import com.uno_restart.service.RoomService;
 import com.uno_restart.types.enums.EnumGamePlayerStatus;
-import com.uno_restart.types.game.GamePlayerState;
 import com.uno_restart.types.game.GameTurnsFeedback;
 import lombok.extern.slf4j.Slf4j;
-import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.ConfigurableApplicationContext;
 import reactor.core.publisher.Flux;
-
-import java.util.Collections;
-import java.util.List;
 
 @Slf4j
 @DgsComponent

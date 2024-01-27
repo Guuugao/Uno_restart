@@ -1,16 +1,13 @@
 package com.uno_restart;
 
-import cn.dev33.satoken.stp.StpUtil;
 import com.google.common.hash.Hashing;
-import com.uno_restart.types.game.GameCard;
-import com.uno_restart.types.player.PlayerInfo;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import reactor.core.publisher.Flux;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.*;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 
@@ -39,7 +36,7 @@ class DefaultTests {
     @Test
     void UUID() {
         for (int i = 0; i < 5; i++) {
-            System.out.println(UUID.randomUUID().toString());
+            System.out.println(UUID.randomUUID());
         }
     }
 

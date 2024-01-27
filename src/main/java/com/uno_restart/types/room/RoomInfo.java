@@ -1,13 +1,11 @@
 package com.uno_restart.types.room;
 
-import com.uno_restart.types.player.PlayerInfo;
 import com.uno_restart.util.RoomIDUtil;
 import lombok.Data;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Optional;
 
 @Data
 public class RoomInfo {

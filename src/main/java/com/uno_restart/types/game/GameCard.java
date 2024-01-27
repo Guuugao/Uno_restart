@@ -44,7 +44,7 @@ public class GameCard implements Comparable<GameCard> {
                         // 每种颜色的其他牌各有两张
                         for (int cardCnt = 0; cardCnt < 2; ++cardCnt) {
                             GameCard normalCard = new GameCard(type, colors[cardCnt], ++cardID);
-                            deck.put(cardID, normalCard);;
+                            deck.put(cardID, normalCard);
                         }
                     }
                 }

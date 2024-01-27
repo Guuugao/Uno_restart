@@ -2,11 +2,8 @@ package com.uno_restart.types.game;
 
 import com.uno_restart.types.player.PlayerInfo;
 import lombok.Data;
-import lombok.Getter;
-import lombok.Setter;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.LinkedList;
 import java.util.TreeMap;
 
 @Data
