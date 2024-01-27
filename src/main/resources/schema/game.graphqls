@@ -1,9 +1,13 @@
 enum EnumUnoCardColor {
-    RED, YELLOW, BLUE, GREEN
+    RED, YELLOW, BLUE, GREEN, BLANK # 万能牌花色
 }
 
 enum EnumUnoCardType {
     N1, N2, N3, N4, N5, N6, N7, N8, N9, N0, SKIP, REVERSE, WILD, ADD2, ADD4
+}
+
+enum EnumGameDirection {
+    clockwise, anticlockwise
 }
 
 enum EnumGamePlayerStatus {
@@ -11,6 +15,8 @@ enum EnumGamePlayerStatus {
     watching
     # 玩家当前回合出牌
     onTurns
+    # 玩家抽牌
+    drawCard
     # 玩家下回合出牌
     nextTurns
     # 如果玩家出卡错误，则返回这个消息要求玩家重新出卡
@@ -24,6 +30,7 @@ enum EnumGamePlayerStatus {
 type GameCard {
     cardType: EnumUnoCardType!
     cardColor: EnumUnoCardColor!
+    cardID: Int!
 }
 
 # 实体类先用上面这个, 应该是一样的
@@ -41,7 +48,7 @@ type GamePlayerInfo {
 type GameTurnsFeedback {
     yourStatus: EnumGamePlayerStatus!
     othersStatus: [GamePlayerState!]!
-    playerGameInfo: [GamePlayerInfo]!
+    gamePlayerInfo: [GamePlayerInfo]
     lastCard: GameCard
 
     success: Boolean!
@@ -52,9 +59,11 @@ type GameTurnsFeedback {
 type GamePlayerState {
     playerName: String!
     status: EnumGamePlayerStatus!
+    # 游戏分数, 首先打完手牌为赢家, 其余玩家按照手牌分数总合倒序排名, 数字牌按牌面计算, 功能牌20, 万能牌50
+    totalScore: Int!
 }
 
 type GameSettings {
     players: [PlayerInfo]!
-    roomInfo: GameRoomInfo
+    roomInfo: RoomInfo
 }

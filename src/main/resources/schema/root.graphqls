@@ -5,13 +5,13 @@ type Query {
     # 通过玩家名称查询用户, 未指定名称代表查询自己, 可以返回空
     queryPlayerByName(playerName: String!, first: Int = 10, after: String) : PlayerConnection!
     # 根据房间名称查找指定游戏房间, 可以返回空
-    queryRoomByName(roomName: String!, first: Int = 10, after: String) : GameRoomConnection!
+    queryRoomByName(roomName: String!, first: Int = 10, after: String) : RoomConnection!
     # 根据房间id查找指定游戏房间, 可以返回空
-    queryRoomByID(roomID: ID!): GameRoomInfo
+    queryRoomByID(roomID: ID!): RoomInfo
     # 获取公开房间列表
-    availableRooms(first: Int = 10, after: String) : GameRoomConnection!
+    availableRooms(first: Int = 10, after: String) : RoomConnection!
     # 查询当前加入的房间
-    currentJoinedRoom: GameRoomFeedback!
+    currentJoinedRoom: RoomFeedback!
 }
 
 # 变更
@@ -28,11 +28,11 @@ type Mutation {
     playerContactModify(email: String, phone: String) : PlayerInfoFeedback!
 
     # 游戏房间相关
-    roomCreate(roomName: String!, maxPlayerCount: Int = 4, isPrivate: Boolean = false, password: String) : GameRoomFeedback!
-    roomJoin(roomID: ID!, password: String) : GameRoomFeedback!
-    roomQuit : GameRoomFeedback!
-    roomPlayerReady(roomID: ID!) : GameRoomFeedback!
-    roomPlayerUnready(roomID: ID!) : GameRoomFeedback!
+    roomCreate(roomName: String!, maxPlayerCount: Int = 4, isPrivate: Boolean = false, password: String) : RoomFeedback!
+    roomJoin(roomID: ID!, password: String) : RoomFeedback!
+    roomQuit : RoomFeedback!
+    roomPlayerReady(roomID: ID!) : RoomFeedback!
+    roomPlayerUnready(roomID: ID!) : RoomFeedback!
 
     # 游玩内容
     gameSendCard(roomID: ID!, card: GameCardInput!): Boolean

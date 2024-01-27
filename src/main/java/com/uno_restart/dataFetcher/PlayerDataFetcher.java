@@ -34,13 +34,13 @@ public class PlayerDataFetcher {
     PlayerService playerService;
     @Autowired
     Base64.Encoder encoder;
-    private static final String uploadPath = "./uploads/";
-    private static final List<String> allowedAvatarTypes = new ArrayList<>(
+    private static final String UPLOAD_PATH = "./uploads/";
+    private static final List<String> ALLOWED_AVATAR_TYPES = new ArrayList<>(
             Arrays.asList("image/jpeg", "image/png", "image/gif"));
-    private static final long allowedAvatarSize = 3 * 1024 * 1024;
+    private static final long ALLOWED_AVATAR_SIZE = 3 * 1024 * 1024;
 
-    private static final int minPlayerNameLen = 2;
-    private static final int maxPlayerNameLen = 8;
+    private static final int MIN_PLAYER_NAME_LEN = 2;
+    private static final int MAX_PLAYER_NAME_LEN = 8;
 
     @DgsQuery
     public PlayerInfo me() {
@@ -97,7 +97,7 @@ public class PlayerDataFetcher {
         PlayerInfoFeedback feedback = new PlayerInfoFeedback(false);
 
         if (!StpUtil.isLogin()) {
-            feedback.setMessage("请登录");
+            feedback.setMessage("未能读取到有效 token");
         } else {
             feedback.setSuccess(true)
                     .setMessage("注销成功");
@@ -157,7 +157,7 @@ public class PlayerDataFetcher {
         PlayerInfoFeedback feedback = new PlayerInfoFeedback(false);
 
         if (!StpUtil.isLogin()) {
-            feedback.setMessage("请登录");
+            feedback.setMessage("未能读取到有效 token");
             return feedback;
         }
 
@@ -182,7 +182,7 @@ public class PlayerDataFetcher {
         PlayerInfoFeedback feedback = new PlayerInfoFeedback(false);
 
         if (!StpUtil.isLogin()) {
-            feedback.setMessage("请登录");
+            feedback.setMessage("未能读取到有效 token");
         } else if (checkPlayerName(newPlayerName)) {
             String playerName = StpUtil.getLoginIdAsString();
             try {
@@ -208,10 +208,10 @@ public class PlayerDataFetcher {
         PlayerAvatarFeedback feedback = new PlayerAvatarFeedback(false);
 
         if (!StpUtil.isLogin()) {
-            feedback.setMessage("请登录");
-        } else if (multipartFile.getSize() > allowedAvatarSize) {
+            feedback.setMessage("未能读取到有效 token");
+        } else if (multipartFile.getSize() > ALLOWED_AVATAR_SIZE) {
             feedback.setMessage("修改失败, 头像文件过大");
-        } else if (allowedAvatarTypes.contains(multipartFile.getContentType())) {
+        } else if (ALLOWED_AVATAR_TYPES.contains(multipartFile.getContentType())) {
             // 使用用户名作为文件名称, 保证唯一性, 可读
             String originalFilename = multipartFile.getOriginalFilename();
             assert originalFilename != null;
@@ -219,7 +219,7 @@ public class PlayerDataFetcher {
 
             try {
                 String playerName = StpUtil.getLoginIdAsString();
-                String savePath = uploadPath + playerName + type;
+                String savePath = UPLOAD_PATH + playerName + type;
                 multipartFile.transferTo(new File(savePath));
 
                 playerService.updateAvatarpath(savePath, playerName);
@@ -243,7 +243,7 @@ public class PlayerDataFetcher {
         PlayerInfoFeedback feedback = new PlayerInfoFeedback(false);
 
         if (!StpUtil.isLogin()) {
-            feedback.setMessage("请登录");
+            feedback.setMessage("未能读取到有效 token");
         } else if (checkEmail(email) && checkPhone(phone)) {
             String playerName = StpUtil.getLoginIdAsString();
             playerService.updateContact(new PlayerContact(email, phone), playerName);
@@ -258,7 +258,7 @@ public class PlayerDataFetcher {
     }
 
     private boolean checkPlayerName(String playerName) {
-        return playerName.length() >= minPlayerNameLen && playerName.length() <= maxPlayerNameLen;
+        return playerName.length() >= MIN_PLAYER_NAME_LEN && playerName.length() <= MAX_PLAYER_NAME_LEN;
     }
 
     private boolean checkEmail(String email) {

@@ -2,13 +2,15 @@ package com.uno_restart;
 
 import cn.dev33.satoken.stp.StpUtil;
 import com.google.common.hash.Hashing;
+import com.uno_restart.types.game.GameCard;
+import com.uno_restart.types.player.PlayerInfo;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import reactor.core.publisher.Flux;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 
@@ -42,7 +44,9 @@ class DefaultTests {
     }
 
     @Test
-    public void testCreate() {
-        System.out.println(StpUtil.getLoginType());
+    public void foo() {
+        Integer i = 10;
+        i += 1;
+        System.out.println(i);
     }
 }

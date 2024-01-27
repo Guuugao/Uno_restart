@@ -10,12 +10,12 @@ import org.jetbrains.annotations.NotNull;
 @Accessors(chain = true)
 @NoArgsConstructor
 @RequiredArgsConstructor
-public class GameRoomFeedback {
+public class RoomFeedback {
     @NotNull
     private Boolean success;
     private String message;
     @NotNull
     private Boolean isInsideRoom;
     private RoomPlayerState self;
-    private GameRoomInfo room;
+    private RoomInfo room;
 }

@@ -1,21 +1,21 @@
 ##### 游戏房间
 
 # 游戏房间分页
-type GameRoomEdge {
-    node: GameRoomInfo!
+type RoomEdge {
+    node: RoomInfo!
     cursor: String!
 }
 
-type GameRoomConnection {
-    edges: [GameRoomEdge!]!
+type RoomConnection {
+    edges: [RoomEdge!]!
     pageInfo: PageInfo!
 }
 
 
-type GameRoomFeedback {
+type RoomFeedback {
     isInsideRoom: Boolean!
     self: RoomPlayerState
-    room: GameRoomInfo
+    room: RoomInfo
 
     success: Boolean!
     message: String
@@ -28,7 +28,7 @@ type RoomPlayerState {
 
 # 游戏房间信息
 # 可以不指定房主, 玩家全部退出即删除房间
-type GameRoomInfo {
+type RoomInfo {
     roomID: String!
     roomName: String!
     # 是否正在进行游戏

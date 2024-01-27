@@ -1,9 +1,11 @@
-package com.uno_restart.types.interfaces_enum;
+package com.uno_restart.types.enums;
 
 public enum EnumGamePlayerStatus {
     watching,
     onTurns,
+    drawCard,
     nextTurns,
     retryOnTurns,
-    gameOverSuccess,
+    gameOverFailed,
+    gameOverSuccess
 }
