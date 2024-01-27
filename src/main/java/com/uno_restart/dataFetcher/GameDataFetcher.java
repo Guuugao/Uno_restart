@@ -2,6 +2,7 @@ package com.uno_restart.dataFetcher;
 
 import cn.dev33.satoken.stp.StpUtil;
 import com.netflix.graphql.dgs.DgsComponent;
+import com.netflix.graphql.dgs.DgsMutation;
 import com.netflix.graphql.dgs.DgsSubscription;
 import com.uno_restart.event.DrawCardEvent;
 import com.uno_restart.exception.PlayerNotInRoomException;
@@ -9,6 +10,7 @@ import com.uno_restart.exception.playerNotLoginException;
 import com.uno_restart.service.GameService;
 import com.uno_restart.service.RoomService;
 import com.uno_restart.types.enums.EnumGamePlayerStatus;
+import com.uno_restart.types.game.GameCard;
 import com.uno_restart.types.game.GameTurnsFeedback;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,12 +28,12 @@ public class GameDataFetcher {
     @Autowired
     private ConfigurableApplicationContext context;
 
-//    @DgsMutation
-//    public Boolean gameSendCard(String roomID, GameCard card) {
-//        StpUtil.checkLogin();
-//
-//    }
-//
+    @DgsMutation
+    public Boolean gameSendCard(String roomID, GameCard card) {
+        StpUtil.checkLogin();
+        return true;
+    }
+
     @DgsSubscription
     public Flux<GameTurnsFeedback> gameWaitNextReaction(String roomID, String token){
         String playerName = StpUtil.getLoginIdByToken(token).toString();

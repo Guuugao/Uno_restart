@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.uno_restart.mapper.PlayerInfoMapper;
 import com.uno_restart.types.player.PlayerContact;
 import com.uno_restart.types.player.PlayerInfo;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 

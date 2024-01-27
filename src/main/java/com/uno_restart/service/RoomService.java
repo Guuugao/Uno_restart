@@ -51,6 +51,8 @@ public class RoomService {
         if (isPrivate) privateRooms.put(room.getRoomID(), room);
         else publicRooms.put(room.getRoomID(), room);
 
+        log.info("create room " + room.getRoomID());
+
         return room;
     }
 
@@ -67,6 +69,8 @@ public class RoomService {
         room.setCurrentPlayerCount(1);
         room.getJoinedPlayer().add(new RoomPlayerState(false, player));
         playerRooms.put(player.getPlayerName(), roomID);
+
+        log.info("player " + player.getPlayerName() + " join room " + roomID);
 
         return true;
     }
@@ -86,7 +90,12 @@ public class RoomService {
             rooms.remove(roomID);
             publicRooms.remove(roomID);
             publicRooms.remove(roomID);
+
+            log.info("room " + roomID + " is closed");
         }
+
+        log.info("player " + playerName + " quit room " + roomID);
+
         return true;
     }
 
@@ -100,6 +109,7 @@ public class RoomService {
         first.ifPresent(roomPlayerState -> {
             roomPlayerState.setIsReady(isReady);
             room.setReadyPlayerCnt(isReady ? 1 : -1); // 根据玩家是否准备, 修改已准备玩家数量
+            log.info("player " + playerName + " is ready: " + isReady);
         });
     }
 

@@ -11,12 +11,12 @@ public class GamePlayerInfo {
     @NotNull
     private PlayerInfo who;
     @NotNull
-    private Integer restCardCount;
+    private Integer remainingCardCnt;
     @NotNull
     private TreeMap<Integer, GameCard> cards;
 
-    public void setRestCardCount(int diff) {
-        this.restCardCount += diff;
+    public void setRemainingCardCnt(int diff) {
+        this.remainingCardCnt += diff;
     }
 
     public String getPlayerName() {

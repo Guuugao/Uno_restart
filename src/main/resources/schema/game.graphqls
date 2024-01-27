@@ -41,7 +41,7 @@ input GameCardInput {
 
 type GamePlayerInfo {
     who: PlayerInfo!
-    restCardCount: Int!
+    remainingCardCnt: Int!
     cards: [GameCard]!
 }
 

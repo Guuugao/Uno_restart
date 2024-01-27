@@ -13,8 +13,10 @@ mybatis-plus:
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
     map-underscore-to-camel-case: false # 关闭字段名称自动驼峰转下划线
     jdbc-type-for-null: 'null'
-#  mapper-locations:
-#    - classpath*:mapper/*.xml
+
+logging:
+  level:
+    root = DEBUG:
 
 dgs:
   graphql:

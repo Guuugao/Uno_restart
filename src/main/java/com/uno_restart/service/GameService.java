@@ -44,6 +44,8 @@ public class GameService {
             else
                 currentPlayerIndex = (currentPlayerIndex - 1 + playerList.size()) % playerList.size();
         }
+
+        log.debug("game " + roomID + " init");
     }
 
     // 抽一张牌, 需要指定玩家与抽牌数量
@@ -62,9 +64,9 @@ public class GameService {
 
         GameCard card = drawPile.removeFirst();
         gamePlayerInfo.getCards().put(card.getCardID(), card);
-        gamePlayerInfo.setRestCardCount(1);
+        gamePlayerInfo.setRemainingCardCnt(1);
         eventPublisher.publishEvent(game.getDrawCardEvent());
-        log.info("player: " + playerName + " draw card " + card + ", rest card: " + gamePlayerInfo.getRestCardCount());
+        log.trace("player " + playerName + " draw card " + card + ", number of remaining cards " + gamePlayerInfo.getRemainingCardCnt());
     }
 
     // 获取所有玩家的游戏状态

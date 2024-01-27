@@ -17,7 +17,6 @@ import com.uno_restart.types.room.RoomFeedback;
 import com.uno_restart.types.room.RoomInfo;
 import com.uno_restart.types.room.RoomPlayerState;
 import graphql.relay.*;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -34,7 +33,6 @@ import java.util.stream.Stream;
 // TODO 修改成员变量可能需要线程安全
 // TODO 查询房间内玩家信息可以用sub datafetcher实现
 // TODO 若房间正在游玩, 则不接受部分请求
-@Slf4j
 @DgsComponent
 public class RoomDataFetcher {
     @Autowired
@@ -237,6 +235,7 @@ public class RoomDataFetcher {
             feedback.setMessage("未能读取到有效 token");
         } else {
             PlayerInfo player = playerService.getById(StpUtil.getLoginIdAsString());
+
             if (roomService.isRoomFull(roomID)) {
                 feedback.setMessage("房间已满");
             } else if (roomService.join(player, roomID, password)) {
@@ -245,6 +244,8 @@ public class RoomDataFetcher {
                         .setIsInsideRoom(true)
                         .setRoom(roomService.getRoom(roomID))
                         .setSelf(roomService.getPlayerState(player.getPlayerName()));
+
+                RoomInfo room = roomService.whichRoom(player.getPlayerName());
             } else {
                 feedback.setMessage("加入失败, 密码错误");
             }
@@ -282,12 +283,10 @@ public class RoomDataFetcher {
             roomService.ready(roomID, playerName, true);
             RoomInfo room = roomService.getRoom(roomID);
             // 若玩家全部准备并且玩家数量大于最小玩家数量, 则开始
-//            if (checkPlayerCount(room.getCurrentPlayerCount()) &&
-//                    room.getCurrentPlayerCount() == room.getReadyPlayerCnt()) {
-//                context.publishEvent(new GameStartEvent(roomID));
-//            }
-            // 方便测试
-            context.publishEvent(new GameStartEvent(roomID));
+            if (checkPlayerCount(room.getCurrentPlayerCount()) &&
+                    room.getCurrentPlayerCount() == room.getReadyPlayerCnt()) {
+                context.publishEvent(new GameStartEvent(roomID));
+            }
 
             feedback.setSuccess(true)
                     .setMessage("玩家 " + playerName + " 已准备")
@@ -322,7 +321,8 @@ public class RoomDataFetcher {
     @DgsSubscription
     public Mono<GameSettings> roomWaitStart(String roomID, String token) {
         // 此处检查是否登录的手段都会失败, 因为使用websocket, 无法读取HTTP请求头
-        if (!StpUtil.isLogin(StpUtil.getLoginIdByToken(token))) {
+        String playerName = StpUtil.getLoginIdByToken(token).toString();
+        if (!StpUtil.isLogin(playerName)) {
             return Mono.error(new playerNotLoginException("未能读取到有效 token"));
         } if (roomService.isRoomNotExists(roomID)) {
             return Mono.error(new RoomNotExistsException("游戏房间不存在"));
@@ -339,7 +339,6 @@ public class RoomDataFetcher {
                     gameService.gameInit(gameSettings); // 初始化游戏必要信息
                 }
             }));
-
         }
     }
 
