@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
 public class GameService {
     // 记录游戏对象
     // key: roomID value: game
-    private HashMap<String, Game> games;
+    private final HashMap<String, Game> games;
     @Autowired
     ApplicationEventPublisher eventPublisher;
 
