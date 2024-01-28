@@ -36,14 +36,15 @@ type Mutation {
 
     # 游玩内容
     pickFirstCard(roomID: ID!): Boolean # 由庄家掀开抽牌堆第一张牌, 确定出牌规则
-    gameSendCard(roomID: ID!, card: GameCardInput!): Boolean # 出牌
-    gameNoCardSend(roomID: ID!): Boolean # 无牌可出, 抽一张牌, 若可出则立刻打出
+    sendCard(roomID: ID!, card: GameCardInput!): Boolean # 出牌
+    noCardToSend(roomID: ID!): Boolean # 无牌可出, 抽一张牌, 若可出则立刻打出
+    sayUno(roomID: ID!): Boolean # 喊Uno
+    whoForgetSayUno(roomID: ID!, playerName: String!): Boolean # 指出谁忘记喊Uno
 }
 
 # 订阅
 # !!! 无法使用http头获取用户信息, 需要手动传递token !!!
 type Subscription {
-    # TODO 测试不去除"saToken="是否能正确读取
     roomWaitStart(roomID: ID!, token: ID!) : GameSettings
     gameWaitNextReaction(roomID: ID!, token: ID!) : GameTurnsFeedback
 }

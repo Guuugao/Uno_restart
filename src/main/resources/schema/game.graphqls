@@ -60,7 +60,7 @@ type GameTurnsFeedback {
     othersStatus: [GamePlayerState!]!
     gamePlayerInfo: [GamePlayerInfo]
     lastCard: GameCard
-    playerAction: GamePlayerAction!
+    playerActions: [GamePlayerAction!]!
 
     success: Boolean!
     message: String

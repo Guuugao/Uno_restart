@@ -13,7 +13,7 @@ public class GamePlayerInfo {
     @NotNull
     private Integer remainingCardCnt;
     @NotNull
-    private TreeMap<Integer, GameCard> cards;
+    private TreeMap<Integer, GameCard> handCards;
 
     public void setRemainingCardCnt(int diff) {
         this.remainingCardCnt += diff;
