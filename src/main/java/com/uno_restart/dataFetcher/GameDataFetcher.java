@@ -7,10 +7,9 @@ import com.netflix.graphql.dgs.DgsSubscription;
 import com.uno_restart.event.DrawCardEvent;
 import com.uno_restart.event.PickFirstCardEvent;
 import com.uno_restart.event.SendCardEvent;
-import com.uno_restart.exception.AbnormalGameException;
-import com.uno_restart.exception.PlayerNotInRoomException;
-import com.uno_restart.exception.PlayerNotLoginException;
-import com.uno_restart.exception.RoomNotExistsException;
+import com.uno_restart.exception.GameAbnormalException;
+import com.uno_restart.exception.PlayerAbnormalException;
+import com.uno_restart.exception.RoomAbnormalException;
 import com.uno_restart.service.GameService;
 import com.uno_restart.service.RoomService;
 import com.uno_restart.types.enums.EnumGameAction;
@@ -39,8 +38,8 @@ public class GameDataFetcher {
 
     @DgsMutation
     Boolean pickFirstCard(String roomID) throws
-            RoomNotExistsException, PlayerNotInRoomException,
-            AbnormalGameException {
+            RoomAbnormalException, PlayerAbnormalException,
+            GameAbnormalException {
         StpUtil.checkLogin();
         String playerName = StpUtil.getLoginIdAsString();
         roomService.checkRoomExists(roomID);
@@ -55,8 +54,8 @@ public class GameDataFetcher {
 
     @DgsMutation
     public Boolean sendCard(String roomID, GameCard card) throws
-            RoomNotExistsException, PlayerNotInRoomException,
-            AbnormalGameException {
+            RoomAbnormalException, PlayerAbnormalException,
+            GameAbnormalException {
         StpUtil.checkLogin();
         String playerName = StpUtil.getLoginIdAsString();
         roomService.checkRoomExists(roomID);
@@ -64,7 +63,7 @@ public class GameDataFetcher {
         gameService.checkTurn(roomID, playerName);
         try {
             gameService.checkCard(roomID, card);
-        } catch (AbnormalGameException e) {
+        } catch (GameAbnormalException e) {
             gameService.reTry(roomID);
             context.publishEvent(new SendCardEvent(roomID, null, playerName));
         }
@@ -77,8 +76,8 @@ public class GameDataFetcher {
 
     @DgsMutation
     public Boolean noCardToSend(String roomID) throws
-            RoomNotExistsException, PlayerNotInRoomException,
-            AbnormalGameException {
+            RoomAbnormalException, PlayerAbnormalException,
+            GameAbnormalException {
         StpUtil.checkLogin();
         String playerName = StpUtil.getLoginIdAsString();
         roomService.checkRoomExists(roomID);
@@ -99,8 +98,8 @@ public class GameDataFetcher {
 
     @DgsMutation
     public Boolean sayUno(String roomID) throws
-            RoomNotExistsException, PlayerNotInRoomException,
-            AbnormalGameException {
+            RoomAbnormalException, PlayerAbnormalException,
+            GameAbnormalException {
         StpUtil.checkLogin();
         String playerName = StpUtil.getLoginIdAsString();
         roomService.checkRoomExists(roomID);
@@ -115,8 +114,8 @@ public class GameDataFetcher {
 
     @DgsMutation
     public Boolean whoForgetSayUno(String roomID, String who) throws
-            RoomNotExistsException, PlayerNotInRoomException,
-            AbnormalGameException {
+            RoomAbnormalException, PlayerAbnormalException,
+            GameAbnormalException {
         StpUtil.checkLogin();
         String playerName = StpUtil.getLoginIdAsString();
         roomService.checkRoomExists(roomID);
@@ -136,14 +135,14 @@ public class GameDataFetcher {
     public Flux<GameTurnsFeedback> gameWaitNextReaction(String roomID, String token) {
         Object playerName = StpUtil.getLoginIdByToken(token);
         if (playerName == null) {
-            return Flux.error(new PlayerNotLoginException("未能读取到有效 token"));
+            return Flux.error(new PlayerAbnormalException("未能读取到有效 token"));
         }
 
         // 订阅使用socket, 所以错误不能直接抛出, 需要转换为错误流
         try {
             roomService.checkRoomExists(roomID);
             roomService.checkPlayerInRoom(roomID, playerName.toString());
-        } catch (RoomNotExistsException | PlayerNotInRoomException e) {
+        } catch (RoomAbnormalException | PlayerAbnormalException e) {
             return Flux.error(e);
         }
 

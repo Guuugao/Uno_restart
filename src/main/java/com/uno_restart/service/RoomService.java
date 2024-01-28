@@ -1,7 +1,7 @@
 package com.uno_restart.service;
 
-import com.uno_restart.exception.PlayerNotInRoomException;
-import com.uno_restart.exception.RoomNotExistsException;
+import com.uno_restart.exception.PlayerAbnormalException;
+import com.uno_restart.exception.RoomAbnormalException;
 import com.uno_restart.types.player.PlayerInfo;
 import com.uno_restart.types.room.RoomInfo;
 import com.uno_restart.types.room.RoomPlayerState;
@@ -31,11 +31,6 @@ public class RoomService {
     // 所有房间
     // key: roomID value: roomInfo
     private final Map<String, RoomInfo> rooms;
-
-    public boolean isRoomFull(String roomID) {
-        RoomInfo room = rooms.get(roomID);
-        return room.getCurrentPlayerCount().equals(room.getMaxPlayerCount());
-    }
 
     public RoomInfo createRoom(String roomName, Boolean isPrivate,
                                Integer maxPlayerCount, String password, String playerName) {
@@ -124,15 +119,20 @@ public class RoomService {
     }
 
     // 检查房间是否存在
-    public void checkRoomExists(String roomID) throws RoomNotExistsException {
-        if (!rooms.containsKey(roomID))
-            throw new RoomNotExistsException("房间不存在");
+    public void checkRoomExists(String roomID) throws RoomAbnormalException {
+        if (!rooms.containsKey(roomID)) 
+            throw new RoomAbnormalException("房间不存在");
     }
 
     // 检查玩家是否加入指定房间
-    public void checkPlayerInRoom(String roomID, String playerName) throws PlayerNotInRoomException {
-        if (!playerRooms.get(playerName).equals(roomID))
-            throw new PlayerNotInRoomException("玩家未加入房间 " + roomID);
+    public void checkPlayerInRoom(String roomID, String playerName) throws PlayerAbnormalException {
+        if (!playerRooms.get(playerName).equals(roomID)) 
+            throw new PlayerAbnormalException("玩家未加入房间 " + roomID);
+    }
+
+    public void checkRoomFull(String roomID) throws RoomAbnormalException {
+        if (rooms.get(roomID).getCurrentPlayerCount().equals(rooms.get(roomID).getMaxPlayerCount()))
+            throw new RoomAbnormalException("房间已满");
     }
 
     public RoomService() {

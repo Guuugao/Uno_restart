@@ -7,9 +7,8 @@ import com.netflix.graphql.dgs.DgsQuery;
 import com.netflix.graphql.dgs.DgsSubscription;
 import com.uno_restart.event.GameStartEvent;
 import com.uno_restart.event.RoomCloseEvent;
-import com.uno_restart.exception.PlayerNotInRoomException;
-import com.uno_restart.exception.PlayerNotLoginException;
-import com.uno_restart.exception.RoomNotExistsException;
+import com.uno_restart.exception.PlayerAbnormalException;
+import com.uno_restart.exception.RoomAbnormalException;
 import com.uno_restart.service.GameService;
 import com.uno_restart.service.PlayerService;
 import com.uno_restart.service.RoomService;
@@ -33,7 +32,6 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-// TODO 修改成员变量可能需要线程安全
 // TODO 查询房间内玩家信息可以用sub datafetcher实现
 // TODO 若房间正在游玩, 则不接受部分请求
 @Slf4j
@@ -229,25 +227,21 @@ public class RoomDataFetcher {
 
     @DgsMutation
     public RoomFeedback roomJoin(String roomID, String password)
-            throws RoomNotExistsException, PlayerNotInRoomException {
+            throws RoomAbnormalException, PlayerAbnormalException {
         RoomFeedback feedback = new RoomFeedback(false, false);
 
         StpUtil.checkLogin();
         roomService.checkRoomExists(roomID);
         roomService.checkPlayerInRoom(roomID, StpUtil.getLoginIdAsString());
+        roomService.checkRoomFull(roomID);
 
         PlayerInfo player = playerService.getById(StpUtil.getLoginIdAsString());
-
-        if (roomService.isRoomFull(roomID)) {
-            feedback.setMessage("房间已满");
-        } else if (roomService.join(player, roomID, password)) {
+        if (roomService.join(player, roomID, password)) {
             feedback.setSuccess(true)
                     .setMessage("加入成功")
                     .setIsInsideRoom(true)
                     .setRoom(roomService.getRoom(roomID))
                     .setSelf(roomService.getPlayerState(player.getPlayerName()));
-
-            RoomInfo room = roomService.whichRoom(player.getPlayerName());
         } else {
             feedback.setMessage("加入失败, 密码错误");
         }
@@ -257,7 +251,7 @@ public class RoomDataFetcher {
 
     @DgsMutation
     public RoomFeedback roomQuit(String roomID)
-            throws RoomNotExistsException, PlayerNotInRoomException {
+            throws RoomAbnormalException, PlayerAbnormalException {
         RoomFeedback feedback = new RoomFeedback(false, false);
 
         StpUtil.checkLogin();
@@ -276,7 +270,7 @@ public class RoomDataFetcher {
 
     @DgsMutation
     public RoomFeedback roomPlayerReady(String roomID)
-            throws RoomNotExistsException, PlayerNotInRoomException {
+            throws RoomAbnormalException, PlayerAbnormalException {
         RoomFeedback feedback = new RoomFeedback(false, false);
 
         StpUtil.checkLogin();
@@ -304,7 +298,7 @@ public class RoomDataFetcher {
 
     @DgsMutation
     public RoomFeedback roomPlayerUnready(String roomID)
-            throws RoomNotExistsException, PlayerNotInRoomException {
+            throws RoomAbnormalException, PlayerAbnormalException {
         RoomFeedback feedback = new RoomFeedback(false, false);
 
         StpUtil.checkLogin();
@@ -328,14 +322,14 @@ public class RoomDataFetcher {
 
         Object playerName = StpUtil.getLoginIdByToken(token);
         if (playerName == null) {
-            return Mono.error(new PlayerNotLoginException("未能读取到有效 token"));
+            return Mono.error(new PlayerAbnormalException("未能读取到有效 token"));
         }
 
         // 订阅使用socket, 所以错误不能直接抛出, 需要转换为错误流
         try {
             roomService.checkRoomExists(roomID);
             roomService.checkPlayerInRoom(roomID, playerName.toString());
-        } catch (RoomNotExistsException | PlayerNotInRoomException e) {
+        } catch (RoomAbnormalException | PlayerAbnormalException e) {
             return Mono.error(e);
         }
 

@@ -19,6 +19,9 @@ public class Game {
     public static final Random random = new Random();
 
     public static final int INITIAL_NUMBER_OF_CARDS = 7; // 初始卡牌为7张
+
+    // 房间ID
+    private final String roomID;
     // 游戏出牌方向, 默认顺时针
     private EnumGameDirection gameDirection;
     // 记录当前出牌玩家下标, 配合gameDirection与playerList, 即可推断玩家状态
@@ -41,6 +44,7 @@ public class Game {
 
     public Game(GameSettings settings) {
         int playerCnt = settings.getPlayers().size();
+        roomID = settings.getRoomInfo().getRoomID();
         gameDirection = EnumGameDirection.clockwise;
         curPlayerIndex = random.nextInt(playerCnt);
         drawPile = new LinkedList<>(DECK.values());
@@ -102,5 +106,9 @@ public class Game {
 
     public String getNextPlayerName(){
         return playerList.get(getNextPlayerIndex()).getPlayerName();
+    }
+
+    public String getCurPlayerName(){
+        return playerList.get(curPlayerIndex).getPlayerName();
     }
 }

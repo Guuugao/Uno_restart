@@ -1,7 +1,7 @@
 package com.uno_restart.service;
 
 import com.uno_restart.event.DrawCardEvent;
-import com.uno_restart.exception.AbnormalGameException;
+import com.uno_restart.exception.GameAbnormalException;
 import com.uno_restart.types.enums.EnumGameDirection;
 import com.uno_restart.types.enums.EnumGamePlayerStatus;
 import com.uno_restart.types.enums.EnumUnoCardType;
@@ -45,7 +45,7 @@ public class GameService {
     }
 
     // 抽取指定数量卡牌并添加至指定玩家手牌
-    public LinkedList<GameCard> drawCard(String roomID, String playerName, int cnt){
+    public LinkedList<GameCard> drawCard(String roomID, String playerName, int cnt) {
         Game game = games.get(roomID);
         GamePlayerInfo gamePlayerInfo = game.getGamePlayers().get(playerName);
         LinkedList<GameCard> drawPile = game.getDrawPile(); // 抽牌堆
@@ -98,28 +98,35 @@ public class GameService {
                 movieIndex(game);
             }
         }
-
         movieIndex(game);
+
+        log.trace("player " + playerName + " in room " + roomID + " send " + card);
     }
 
     // 当前玩家放弃出牌
-    public void giveUpSendCard(String roomID){
+    public void giveUpSendCard(String roomID) {
         movieIndex(games.get(roomID));
+
+        log.info("room " + roomID + " current player give up to send card");
     }
 
-    public GameCard pickFirstCard(String roomID) throws AbnormalGameException {
+    public GameCard pickFirstCard(String roomID) throws GameAbnormalException {
         Game game = games.get(roomID);
         if (game.getPreviousCard() != null)
-            throw new AbnormalGameException("初始卡牌已确定");
+            throw new GameAbnormalException("初始卡牌已确定");
         GameCard firstCard = game.getDrawPile().removeFirst();
         game.getDiscardPile().add(firstCard);
         game.setPreviousCard(firstCard);
+
+        log.info("room " + roomID + " first card is " + firstCard);
         return firstCard;
     }
 
     // 修改玩家状态为喊过Uno
     public void sayUno(String roomID) {
-        games.get(roomID).getCurGamePlayerState().setSayUno(true);
+        GamePlayerState playerState = games.get(roomID).getCurGamePlayerState();
+        playerState.setSayUno(true);
+        log.info("player " + playerState.getPlayerName() + " say Uno!");
     }
 
     // 获取所有玩家的游戏状态
@@ -143,6 +150,7 @@ public class GameService {
         GamePlayerInfo gamePlayerInfo = game.getGamePlayerInfo(playerName);
         game.getDiscardPile().add(gamePlayerInfo.getHandCards().remove(card.getCardID()));
         gamePlayerInfo.setRemainingCardCnt(-1);
+        log.trace("room " + roomID + " movie " + card + " to discard pile");
     }
 
     // 将"currentPlayerIndex"下标指向下一个玩家
@@ -154,18 +162,19 @@ public class GameService {
             game.setCurPlayerIndex((game.getCurPlayerIndex() - 1 + game.getPlayerCnt()) % game.getPlayerCnt());
         game.setGamePlayerStateByIndex(game.getCurPlayerIndex(), EnumGamePlayerStatus.onTurns);
         game.setGamePlayerStateByIndex(game.getNextPlayerIndex(), EnumGamePlayerStatus.nextTurns);
+        log.debug("room " + game.getRoomID() + " current turn " + game.getCurPlayerName() + "\nnext turn " + game.getNextPlayerName());
     }
 
     // 检查到卡牌不能打出后抛出异常
     public void checkCard(String roomID, GameCard card)
-            throws AbnormalGameException {
+            throws GameAbnormalException {
         // 若为万能牌或者颜色/图案与上一张牌一样才允许出牌
         if (!isCardLegal(roomID, card))
-            throw new AbnormalGameException("卡牌颜色或图案不同");
+            throw new GameAbnormalException("卡牌颜色或图案不同");
     }
 
     // 检查卡牌是否可以打出
-    public boolean isCardLegal(String roomID, GameCard card){
+    public boolean isCardLegal(String roomID, GameCard card) {
         GameCard previousCard = games.get(roomID).getPreviousCard();
         // 当卡牌满足 颜色相同 | 图案相同 | 万能牌 时可以打出
         return card.getCardType() == EnumUnoCardType.WILD ||
@@ -176,9 +185,9 @@ public class GameService {
 
     // 检查是否为指定玩家回合
     public void checkTurn(String roomID, String playerName)
-            throws AbnormalGameException {
+            throws GameAbnormalException {
         if (!games.get(roomID).getCurGamePlayerState().getPlayerName().equals(playerName))
-            throw new AbnormalGameException("不是当前玩家回合");
+            throw new GameAbnormalException("不是当前玩家回合");
     }
 
     // 当前出牌不符合规则, 设置当前出牌玩家状态为retryOnTurns
@@ -207,20 +216,22 @@ public class GameService {
             game.setGameDirection(EnumGameDirection.anticlockwise);
         else
             game.setGameDirection(EnumGameDirection.clockwise);
+
+        log.info("room " + game.getRoomID() + " direction is " + game.getGameDirection());
     }
 
     // 在玩家还有牌可以打出时抛出异常
-    public void checkHasCardToSend(String roomID, String playerName) throws AbnormalGameException {
+    public void checkHasCardToSend(String roomID, String playerName) throws GameAbnormalException {
         if (games.get(roomID).getGamePlayerInfo(playerName)
                 .getHandCards().values()
                 .stream().anyMatch(card -> isCardLegal(roomID, card)))
-            throw new AbnormalGameException("存在卡牌可以打出");
+            throw new GameAbnormalException("存在卡牌可以打出");
     }
 
     // 在指定房间当前出牌玩家手牌大于1时抛出异常
-    public void checkOnlyOneCard(String roomID, String playerName) throws AbnormalGameException {
+    public void checkOnlyOneCard(String roomID, String playerName) throws GameAbnormalException {
         if (games.get(roomID).getGamePlayerInfo(playerName).getHandCards().size() > 1)
-            throw new AbnormalGameException("剩余卡牌数量大于1");
+            throw new GameAbnormalException("剩余卡牌数量大于1");
     }
 
     public boolean didYouSayUno(String roomID, String who) {
