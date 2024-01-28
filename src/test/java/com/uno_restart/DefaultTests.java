@@ -1,5 +1,6 @@
 package com.uno_restart;
 
+import cn.dev33.satoken.stp.StpUtil;
 import com.google.common.hash.Hashing;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -38,12 +39,5 @@ class DefaultTests {
         for (int i = 0; i < 5; i++) {
             System.out.println(UUID.randomUUID());
         }
-    }
-
-    @Test
-    public void foo() {
-        Integer i = 10;
-        i += 1;
-        System.out.println(i);
     }
 }

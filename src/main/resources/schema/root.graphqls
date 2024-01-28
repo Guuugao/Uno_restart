@@ -30,17 +30,20 @@ type Mutation {
     # 游戏房间相关
     roomCreate(roomName: String!, maxPlayerCount: Int = 4, isPrivate: Boolean = false, password: String) : RoomFeedback!
     roomJoin(roomID: ID!, password: String) : RoomFeedback!
-    roomQuit : RoomFeedback!
+    roomQuit(roomID: ID!) : RoomFeedback!
     roomPlayerReady(roomID: ID!) : RoomFeedback!
     roomPlayerUnready(roomID: ID!) : RoomFeedback!
 
     # 游玩内容
-    gameSendCard(roomID: ID!, card: GameCardInput!): Boolean
+    pickFirstCard(roomID: ID!): Boolean # 由庄家掀开抽牌堆第一张牌, 确定出牌规则
+    gameSendCard(roomID: ID!, card: GameCardInput!): Boolean # 出牌
+    gameNoCardSend(roomID: ID!): Boolean # 无牌可出, 抽一张牌, 若可出则立刻打出
 }
 
 # 订阅
 # !!! 无法使用http头获取用户信息, 需要手动传递token !!!
 type Subscription {
+    # TODO 测试不去除"saToken="是否能正确读取
     roomWaitStart(roomID: ID!, token: ID!) : GameSettings
     gameWaitNextReaction(roomID: ID!, token: ID!) : GameTurnsFeedback
 }

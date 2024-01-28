@@ -33,9 +33,8 @@ public class Game {
     private LinkedList<GameCard> drawPile;
     // 弃牌堆
     private LinkedList<GameCard> discardPile;
-
-    // 抽牌事件, 与roomID绑定且频繁触发, 故创建为变量以复用
-    private DrawCardEvent drawCardEvent;
+    // 上一张牌
+    private GameCard previousCard;
 
     public Game(GameSettings settings) {
         int playerCnt = settings.getPlayers().size();
@@ -52,7 +51,6 @@ public class Game {
                 .stream()
                 .map(player -> new GamePlayerState(player.getPlayerName(), EnumGamePlayerStatus.watching))
                 .collect(Collectors.toCollection(LinkedList::new));
-        drawCardEvent = new DrawCardEvent(settings.getRoomInfo().getRoomID());
 
         // 确定当前回合与下回合出牌玩家
         playerList.get(currentPlayerIndex).setStatus(EnumGamePlayerStatus.onTurns);

@@ -23,7 +23,7 @@ type PlayerInfo {
     # 这里为了避免跨平台导致的解析错误，我们统一使用String传递上次登录时间
     lastLogin: String!
     # 如果authcation过期了却没有被renew，则代表玩家下线
-    online: Boolean!
+    isOnline: Boolean!
     contact: PlayerContact
     history: PlayerHistory!
 }

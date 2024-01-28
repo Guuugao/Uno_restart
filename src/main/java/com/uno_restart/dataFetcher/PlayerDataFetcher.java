@@ -94,17 +94,9 @@ public class PlayerDataFetcher {
 
     @DgsMutation
     public PlayerInfoFeedback playerLogout() {
-        PlayerInfoFeedback feedback = new PlayerInfoFeedback(false);
-
-        if (!StpUtil.isLogin()) {
-            feedback.setMessage("未能读取到有效 token");
-        } else {
-            feedback.setSuccess(true)
-                    .setMessage("注销成功");
-            StpUtil.logout();
-        }
-
-        return feedback;
+        StpUtil.logout();
+        return new PlayerInfoFeedback(true)
+                .setMessage("注销成功");
     }
 
     @DgsMutation
@@ -112,7 +104,6 @@ public class PlayerDataFetcher {
         PlayerInfoFeedback feedback = new PlayerInfoFeedback(false);
 
         if (checkPlayerName(playerName)) {
-            PlayerInfo player = playerService.getById(playerName);
             if (comparePassword(playerName, password)) {
                 feedback.setSuccess(true)
                         .setMessage("登陆成功");
@@ -154,15 +145,11 @@ public class PlayerDataFetcher {
 
     @DgsMutation
     public PlayerInfoFeedback playerPasswordModify(String oldPassword, String newPassword) {
+        StpUtil.checkLogin();
+
         PlayerInfoFeedback feedback = new PlayerInfoFeedback(false);
 
-        if (!StpUtil.isLogin()) {
-            feedback.setMessage("未能读取到有效 token");
-            return feedback;
-        }
-
         String playerName = StpUtil.getLoginIdAsString();
-        String password = playerService.getPasswordByPlayerName(playerName);
         if (comparePassword(playerName, oldPassword)) {
             String salt = UUID.randomUUID().toString();
             playerService.updatePassword(encodeWithSalt(newPassword, salt), salt, playerName);
@@ -179,11 +166,11 @@ public class PlayerDataFetcher {
 
     @DgsMutation
     public PlayerInfoFeedback playerNameModify(String newPlayerName) {
+        StpUtil.checkLogin();
+
         PlayerInfoFeedback feedback = new PlayerInfoFeedback(false);
 
-        if (!StpUtil.isLogin()) {
-            feedback.setMessage("未能读取到有效 token");
-        } else if (checkPlayerName(newPlayerName)) {
+        if (checkPlayerName(newPlayerName)) {
             String playerName = StpUtil.getLoginIdAsString();
             try {
                 playerService.updatePlayerName(newPlayerName, playerName);
@@ -204,12 +191,12 @@ public class PlayerDataFetcher {
 
     @DgsMutation
     public PlayerAvatarFeedback playerAvatarModify(DataFetchingEnvironment dfe) {
+        StpUtil.checkLogin();
+
         MultipartFile multipartFile = dfe.getArgument("avatar");
         PlayerAvatarFeedback feedback = new PlayerAvatarFeedback(false);
 
-        if (!StpUtil.isLogin()) {
-            feedback.setMessage("未能读取到有效 token");
-        } else if (multipartFile.getSize() > ALLOWED_AVATAR_SIZE) {
+        if (multipartFile.getSize() > ALLOWED_AVATAR_SIZE) {
             feedback.setMessage("修改失败, 头像文件过大");
         } else if (ALLOWED_AVATAR_TYPES.contains(multipartFile.getContentType())) {
             // 使用用户名作为文件名称, 保证唯一性, 可读
@@ -240,11 +227,11 @@ public class PlayerDataFetcher {
 
     @DgsMutation
     public PlayerInfoFeedback playerContactModify(String email, String phone) throws JsonProcessingException {
+        StpUtil.checkLogin();
+
         PlayerInfoFeedback feedback = new PlayerInfoFeedback(false);
 
-        if (!StpUtil.isLogin()) {
-            feedback.setMessage("未能读取到有效 token");
-        } else if (checkEmail(email) && checkPhone(phone)) {
+        if (checkEmail(email) && checkPhone(phone)) {
             String playerName = StpUtil.getLoginIdAsString();
             playerService.updateContact(new PlayerContact(email, phone), playerName);
 

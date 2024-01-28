@@ -1,5 +1,7 @@
 package com.uno_restart.service;
 
+import com.uno_restart.exception.PlayerNotInRoomException;
+import com.uno_restart.exception.RoomNotExistsException;
 import com.uno_restart.types.player.PlayerInfo;
 import com.uno_restart.types.room.RoomInfo;
 import com.uno_restart.types.room.RoomPlayerState;
@@ -34,17 +36,11 @@ public class RoomService {
         RoomInfo room = rooms.get(roomID);
         return room.getCurrentPlayerCount().equals(room.getMaxPlayerCount());
     }
-    public boolean isRoomNotExists(String roomID) {
-        return !rooms.containsKey(roomID);
-    }
-    public boolean isPlayerNotJoinRoom(String playerName) {
-        return !playerRooms.containsKey(playerName);
-    }
 
     public RoomInfo createRoom(String roomName, Boolean isPrivate,
                                Integer maxPlayerCount, String password, String playerName) {
         // 若已加入房间, 则退出
-        quit(playerName);
+        quit(playerRooms.get(playerName), playerName);
         RoomInfo room = new RoomInfo(roomName, isPrivate, maxPlayerCount, password);
         rooms.put(room.getRoomID(), room);
 
@@ -58,7 +54,7 @@ public class RoomService {
 
     public boolean join(PlayerInfo player, String roomID, String password) {
         // 若已加入房间, 则先退出
-        quit(player.getPlayerName());
+        quit(roomID, player.getPlayerName());
         RoomInfo room = rooms.get(roomID);
 
         // 若需要密码且密码错误, 则返回
@@ -75,10 +71,9 @@ public class RoomService {
         return true;
     }
 
-    public boolean quit(String playerName) {
+    public boolean quit(String roomID, String playerName) {
         // 若玩家未加入房间, 则不处理
-        if (isPlayerNotJoinRoom(playerName)) return false;
-        String roomID = playerRooms.get(playerName);
+        if (!playerRooms.get(playerName).equals(roomID)) return false;
         playerRooms.remove(playerName);
         RoomInfo room = rooms.get(roomID);
         // 将玩家从指定房间踢出
@@ -101,7 +96,6 @@ public class RoomService {
 
     public void ready(String roomID, String playerName, boolean isReady){
         // 若玩家未加入房间, 则不处理
-        if (isPlayerNotJoinRoom(playerName)) return;
         RoomInfo room = rooms.get(roomID);
         Optional<RoomPlayerState> first = room.getJoinedPlayer().stream()
                 .filter(playerState -> playerState.getPlayer().getPlayerName().equals(playerName))
@@ -114,13 +108,10 @@ public class RoomService {
     }
 
     public RoomPlayerState getPlayerState(String playerName){
-        // 未加入房间, 不做处理
-        if (isPlayerNotJoinRoom(playerName)) return null;
-        RoomInfo room = rooms.get(playerRooms.get(playerName));
-        Optional<RoomPlayerState> first = room.getJoinedPlayer().stream()
+        return rooms.get(playerRooms.get(playerName)).getJoinedPlayer().stream()
                 .filter(playerState -> playerState.getPlayer().getPlayerName().equals(playerName))
-                .findFirst();
-        return first.orElse(null);
+                .findFirst()
+                .orElse(null);
     }
 
 
@@ -130,6 +121,18 @@ public class RoomService {
 
     public RoomInfo whichRoom(String playerName) {
         return rooms.get(playerRooms.get(playerName));
+    }
+
+    // 检查房间是否存在
+    public void checkRoomExists(String roomID) throws RoomNotExistsException {
+        if (!rooms.containsKey(roomID))
+            throw new RoomNotExistsException("房间不存在");
+    }
+
+    // 检查玩家是否加入指定房间
+    public void checkPlayerInRoom(String roomID, String playerName) throws PlayerNotInRoomException {
+        if (!playerRooms.get(playerName).equals(roomID))
+            throw new PlayerNotInRoomException("玩家未加入房间 " + roomID);
     }
 
     public RoomService() {

@@ -18,4 +18,6 @@ public class GameTurnsFeedback {
     private List<GamePlayerState> othersStatus;
     private List<GamePlayerInfo> gamePlayerInfo;
     private GameCard lastCard;
+    @NotNull
+    private GamePlayerAction playerAction;
 }

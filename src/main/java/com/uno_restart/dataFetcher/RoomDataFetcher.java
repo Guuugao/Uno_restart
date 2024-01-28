@@ -6,8 +6,10 @@ import com.netflix.graphql.dgs.DgsMutation;
 import com.netflix.graphql.dgs.DgsQuery;
 import com.netflix.graphql.dgs.DgsSubscription;
 import com.uno_restart.event.GameStartEvent;
+import com.uno_restart.event.RoomCloseEvent;
+import com.uno_restart.exception.PlayerNotInRoomException;
+import com.uno_restart.exception.PlayerNotLoginException;
 import com.uno_restart.exception.RoomNotExistsException;
-import com.uno_restart.exception.playerNotLoginException;
 import com.uno_restart.service.GameService;
 import com.uno_restart.service.PlayerService;
 import com.uno_restart.service.RoomService;
@@ -17,9 +19,11 @@ import com.uno_restart.types.room.RoomFeedback;
 import com.uno_restart.types.room.RoomInfo;
 import com.uno_restart.types.room.RoomPlayerState;
 import graphql.relay.*;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.ConfigurableApplicationContext;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.nio.charset.StandardCharsets;
@@ -33,6 +37,7 @@ import java.util.stream.Stream;
 // TODO 修改成员变量可能需要线程安全
 // TODO 查询房间内玩家信息可以用sub datafetcher实现
 // TODO 若房间正在游玩, 则不接受部分请求
+@Slf4j
 @DgsComponent
 public class RoomDataFetcher {
     @Autowired
@@ -56,12 +61,14 @@ public class RoomDataFetcher {
     @DgsQuery
     public RoomInfo queryRoomByID(String roomID) {
         StpUtil.checkLogin();
+
         return roomService.getRoom(roomID);
     }
 
     @DgsQuery
     public Connection<RoomInfo> queryRoomByName(String roomName, Integer first, String after) {
         StpUtil.checkLogin();
+
         String cursor = (after == null) ? null : new String(decoder.decode(after));
 
         Stream<RoomInfo> roomInfoStream = roomService.getPublicRooms().values()
@@ -119,7 +126,6 @@ public class RoomDataFetcher {
         StpUtil.checkLogin();
 
         String cursor = (after == null) ? null : new String(decoder.decode(after));
-
         Stream<RoomInfo> roomInfoStream = roomService.getPublicRooms().values()
                 .stream();
         if (after != null && after.isEmpty()) {
@@ -171,23 +177,21 @@ public class RoomDataFetcher {
 
     @DgsQuery
     public RoomFeedback currentJoinedRoom() {
+        StpUtil.checkLogin();
+
         RoomFeedback feedback = new RoomFeedback(false, false);
 
-        if (!StpUtil.isLogin()) {
-            feedback.setMessage("未能读取到有效 token");
+        String playerName = StpUtil.getLoginIdAsString();
+        RoomInfo room = roomService.whichRoom(playerName);
+        if (room != null) {
+            feedback.setSuccess(true)
+                    .setMessage("玩家当前位于房间 " + room.getRoomName())
+                    .setIsInsideRoom(true)
+                    .setRoom(room)
+                    .setSelf(roomService.getPlayerState(playerName));
         } else {
-            String playerName = StpUtil.getLoginIdAsString();
-            RoomInfo room = roomService.whichRoom(playerName);
-            if (room != null) {
-                feedback.setSuccess(true)
-                        .setMessage("玩家当前位于房间 " + room.getRoomName())
-                        .setIsInsideRoom(true)
-                        .setRoom(room)
-                        .setSelf(roomService.getPlayerState(playerName));
-            } else {
-                feedback.setSuccess(true)
-                        .setMessage("玩家 " + playerName + " 未加入任何房间");
-            }
+            feedback.setSuccess(true)
+                    .setMessage("玩家 " + playerName + " 未加入任何房间");
         }
 
         return feedback;
@@ -200,12 +204,9 @@ public class RoomDataFetcher {
      * */
     @DgsMutation
     public RoomFeedback roomCreate(String roomName, Integer maxPlayerCount, Boolean isPrivate, String password) {
-        RoomFeedback feedback = new RoomFeedback(false, false);
+        StpUtil.checkLogin();
 
-        if (!StpUtil.isLogin()) {
-            feedback.setMessage("未能读取到有效 token");
-            return feedback;
-        }
+        RoomFeedback feedback = new RoomFeedback(false, false);
 
         if (!checkPlayerCount(maxPlayerCount) || !checkRoomName(roomName)) {
             feedback.setMessage("创建房间失败, 请检查房间设置");
@@ -228,106 +229,120 @@ public class RoomDataFetcher {
     }
 
     @DgsMutation
-    public RoomFeedback roomJoin(String roomID, String password) {
+    public RoomFeedback roomJoin(String roomID, String password)
+            throws RoomNotExistsException, PlayerNotInRoomException {
         RoomFeedback feedback = new RoomFeedback(false, false);
 
-        if (!StpUtil.isLogin()) {
-            feedback.setMessage("未能读取到有效 token");
-        } else {
-            PlayerInfo player = playerService.getById(StpUtil.getLoginIdAsString());
+        StpUtil.checkLogin();
+        roomService.checkRoomExists(roomID);
+        roomService.checkPlayerInRoom(roomID, StpUtil.getLoginIdAsString());
 
-            if (roomService.isRoomFull(roomID)) {
-                feedback.setMessage("房间已满");
-            } else if (roomService.join(player, roomID, password)) {
-                feedback.setSuccess(true)
-                        .setMessage("加入成功")
-                        .setIsInsideRoom(true)
-                        .setRoom(roomService.getRoom(roomID))
-                        .setSelf(roomService.getPlayerState(player.getPlayerName()));
+        PlayerInfo player = playerService.getById(StpUtil.getLoginIdAsString());
 
-                RoomInfo room = roomService.whichRoom(player.getPlayerName());
-            } else {
-                feedback.setMessage("加入失败, 密码错误");
-            }
-        }
-
-        return feedback;
-    }
-
-    @DgsMutation
-    public RoomFeedback roomQuit() {
-        RoomFeedback feedback = new RoomFeedback(false, false);
-
-        if (!StpUtil.isLogin()) {
-            feedback.setMessage("未能读取到有效 token");
-        } else {
-            if (roomService.quit(StpUtil.getLoginIdAsString())) {
-                feedback.setSuccess(true)
-                        .setMessage("退出房间成功");
-            } else {
-                feedback.setMessage("退出失败, 未加入任何房间");
-            }
-        }
-
-        return feedback;
-    }
-
-    @DgsMutation
-    public RoomFeedback roomPlayerReady(String roomID) {
-        RoomFeedback feedback = new RoomFeedback(false, false);
-
-        if (!StpUtil.isLogin()) {
-            feedback.setMessage("未能读取到有效 token");
-        } else {
-            String playerName = StpUtil.getLoginIdAsString();
-            roomService.ready(roomID, playerName, true);
-            RoomInfo room = roomService.getRoom(roomID);
-            // 若玩家全部准备并且玩家数量大于最小玩家数量, 则开始
-            if (checkPlayerCount(room.getCurrentPlayerCount()) &&
-                    room.getCurrentPlayerCount() == room.getReadyPlayerCnt()) {
-                context.publishEvent(new GameStartEvent(roomID));
-            }
-
+        if (roomService.isRoomFull(roomID)) {
+            feedback.setMessage("房间已满");
+        } else if (roomService.join(player, roomID, password)) {
             feedback.setSuccess(true)
-                    .setMessage("玩家 " + playerName + " 已准备")
+                    .setMessage("加入成功")
                     .setIsInsideRoom(true)
-                    .setSelf(roomService.getPlayerState(playerName))
-                    .setRoom(room);
+                    .setRoom(roomService.getRoom(roomID))
+                    .setSelf(roomService.getPlayerState(player.getPlayerName()));
+
+            RoomInfo room = roomService.whichRoom(player.getPlayerName());
+        } else {
+            feedback.setMessage("加入失败, 密码错误");
         }
 
         return feedback;
     }
 
     @DgsMutation
-    public RoomFeedback roomPlayerUnready(String roomID) {
+    public RoomFeedback roomQuit(String roomID)
+            throws RoomNotExistsException, PlayerNotInRoomException {
         RoomFeedback feedback = new RoomFeedback(false, false);
 
-        if (!StpUtil.isLogin()) {
-            feedback.setMessage("未能读取到有效 token");
-        } else {
-            String playerName = StpUtil.getLoginIdAsString();
-            roomService.ready(roomID, playerName, false);
+        StpUtil.checkLogin();
+        roomService.checkRoomExists(roomID);
+        roomService.checkPlayerInRoom(roomID, StpUtil.getLoginIdAsString());
 
+        if (roomService.quit(roomID, StpUtil.getLoginIdAsString())) {
             feedback.setSuccess(true)
-                    .setMessage("玩家 " + playerName + " 已取消准备")
-                    .setIsInsideRoom(true)
-                    .setSelf(roomService.getPlayerState(playerName))
-                    .setRoom(roomService.getRoom(roomID));
+                    .setMessage("退出房间成功");
+        } else {
+            feedback.setMessage("退出失败, 未加入任何房间");
         }
+
+        return feedback;
+    }
+
+    @DgsMutation
+    public RoomFeedback roomPlayerReady(String roomID)
+            throws RoomNotExistsException, PlayerNotInRoomException {
+        RoomFeedback feedback = new RoomFeedback(false, false);
+
+        StpUtil.checkLogin();
+        roomService.checkRoomExists(roomID);
+        roomService.checkPlayerInRoom(roomID, StpUtil.getLoginIdAsString());
+
+        String playerName = StpUtil.getLoginIdAsString();
+        roomService.ready(roomID, playerName, true);
+        RoomInfo room = roomService.getRoom(roomID);
+        // 若玩家全部准备并且玩家数量大于最小玩家数量, 则开始
+        if (checkPlayerCount(room.getCurrentPlayerCount()) &&
+                room.getCurrentPlayerCount() == room.getReadyPlayerCnt()) {
+            context.publishEvent(new GameStartEvent(roomID));
+        }
+
+        feedback.setSuccess(true)
+                .setMessage("玩家 " + playerName + " 已准备")
+                .setIsInsideRoom(true)
+                .setSelf(roomService.getPlayerState(playerName))
+                .setRoom(room);
+
+
+        return feedback;
+    }
+
+    @DgsMutation
+    public RoomFeedback roomPlayerUnready(String roomID)
+            throws RoomNotExistsException, PlayerNotInRoomException {
+        RoomFeedback feedback = new RoomFeedback(false, false);
+
+        StpUtil.checkLogin();
+        roomService.checkRoomExists(roomID);
+        roomService.checkPlayerInRoom(roomID, StpUtil.getLoginIdAsString());
+
+        String playerName = StpUtil.getLoginIdAsString();
+        roomService.ready(roomID, playerName, false);
+
+        feedback.setSuccess(true)
+                .setMessage("玩家 " + playerName + " 已取消准备")
+                .setIsInsideRoom(true)
+                .setSelf(roomService.getPlayerState(playerName))
+                .setRoom(roomService.getRoom(roomID));
 
         return feedback;
     }
 
     @DgsSubscription
     public Mono<GameSettings> roomWaitStart(String roomID, String token) {
-        // 此处检查是否登录的手段都会失败, 因为使用websocket, 无法读取HTTP请求头
-        String playerName = StpUtil.getLoginIdByToken(token).toString();
-        if (!StpUtil.isLogin(playerName)) {
-            return Mono.error(new playerNotLoginException("未能读取到有效 token"));
-        } if (roomService.isRoomNotExists(roomID)) {
-            return Mono.error(new RoomNotExistsException("游戏房间不存在"));
-        } else {
-            return Mono.create(sink -> context.addApplicationListener((ApplicationListener<GameStartEvent>) event -> {
+
+        Object playerName = StpUtil.getLoginIdByToken(token);
+        if (playerName == null) {
+            return Mono.error(new PlayerNotLoginException("未能读取到有效 token"));
+        }
+
+        // 订阅使用socket, 所以错误不能直接抛出, 需要转换为错误流
+        try {
+            roomService.checkRoomExists(roomID);
+            roomService.checkPlayerInRoom(roomID, playerName.toString());
+        } catch (RoomNotExistsException | PlayerNotInRoomException e) {
+            return Mono.error(e);
+        }
+
+        return Mono.create(sink -> {
+            // 监听游戏开始事件
+            context.addApplicationListener((ApplicationListener<GameStartEvent>) event -> {
                 if (roomID.equals(event.getSource())) { // 忽略其他房间的信号
                     RoomInfo room = roomService.getRoom(event.getSource().toString());
                     LinkedList<PlayerInfo> players = room.getJoinedPlayer().stream()
@@ -337,9 +352,15 @@ public class RoomDataFetcher {
                     room.setIsPlaying(true);
                     sink.success(gameSettings); // 通知客户端游戏开始
                     gameService.gameInit(gameSettings); // 初始化游戏必要信息
+                    log.info("game " + event.getSource() + " start");
                 }
-            }));
-        }
+            });
+            // 监听房间关闭事件
+            context.addApplicationListener((ApplicationListener<RoomCloseEvent>) event -> {
+                sink.success(); // 取消流, 若流已经开始, 则需要使用Disposable.dispose()
+                log.info("cancel subscribe of wait room " + event.getSource() + " start");
+            });
+        });
     }
 
     private boolean checkPlayerCount(Integer playerCount) {

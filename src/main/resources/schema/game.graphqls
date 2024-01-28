@@ -7,7 +7,12 @@ enum EnumUnoCardType {
 }
 
 enum EnumGameDirection {
-    clockwise, anticlockwise
+    clockwise, anticlockwise # 顺时针, 逆时针
+}
+
+enum EnumGameAction {
+    # 玩家行动: 抽牌, 出牌, 跳过 可以根据行动更新界面
+    drawCard, sendCard, skipTurn
 }
 
 enum EnumGamePlayerStatus {
@@ -15,8 +20,6 @@ enum EnumGamePlayerStatus {
     watching
     # 玩家当前回合出牌
     onTurns
-    # 玩家抽牌
-    drawCard
     # 玩家下回合出牌
     nextTurns
     # 如果玩家出卡错误，则返回这个消息要求玩家重新出卡
@@ -45,11 +48,19 @@ type GamePlayerInfo {
     cards: [GameCard]!
 }
 
+# 指示玩家执行某个动作, 执行了几次
+type GamePlayerAction {
+    who: String!
+    action: EnumGameAction!
+    actionTimes: Int
+}
+
 type GameTurnsFeedback {
     yourStatus: EnumGamePlayerStatus!
     othersStatus: [GamePlayerState!]!
     gamePlayerInfo: [GamePlayerInfo]
     lastCard: GameCard
+    playerAction: GamePlayerAction!
 
     success: Boolean!
     message: String
@@ -61,6 +72,8 @@ type GamePlayerState {
     status: EnumGamePlayerStatus!
     # 游戏分数, 首先打完手牌为赢家, 其余玩家按照手牌分数总合倒序排名, 数字牌按牌面计算, 功能牌20, 万能牌50
     totalScore: Int!
+    # 是否说Uno
+    sayUno: Boolean!
 }
 
 type GameSettings {
