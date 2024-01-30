@@ -1,8 +1,5 @@
 package com.uno_restart;
 
-import com.uno_restart.types.enums.EnumUnoCardColor;
-import com.uno_restart.types.enums.EnumUnoCardType;
-import com.uno_restart.types.game.GameCard;
 import com.uno_restart.types.player.PlayerInfo;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
