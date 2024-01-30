@@ -36,4 +36,12 @@ public class PlayerInfo {
 
     @NotNull
     private String salt; // 使用UUID作为盐, 在注册或者修改密码时重新生成
+
+    public void addWinTimes() {
+        history.addWinTimes();
+    }
+
+    public void addFailTimes() {
+        history.addFailTimes();
+    }
 }

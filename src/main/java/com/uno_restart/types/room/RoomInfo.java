@@ -1,11 +1,15 @@
 package com.uno_restart.types.room;
 
+import com.uno_restart.types.player.PlayerInfo;
 import com.uno_restart.util.RoomIDUtil;
 import lombok.Data;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Data
 public class RoomInfo {
@@ -38,6 +42,12 @@ public class RoomInfo {
     // 已准备玩家数量加/减指定值
     public void setReadyPlayerCnt(int diff) {
         this.readyPlayerCnt += diff;
+    }
+
+    public Map<String, PlayerInfo> getPlayerInfos() {
+        return joinedPlayer.stream()
+                .map(RoomPlayerState::getPlayer)
+                .collect(Collectors.toMap(PlayerInfo::getPlayerName, Function.identity()));
     }
 
     public RoomInfo(@NotNull String roomName, @NotNull Boolean isPrivate,

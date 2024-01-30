@@ -4,9 +4,7 @@ import cn.dev33.satoken.stp.StpUtil;
 import com.netflix.graphql.dgs.DgsComponent;
 import com.netflix.graphql.dgs.DgsMutation;
 import com.netflix.graphql.dgs.DgsSubscription;
-import com.uno_restart.event.DrawCardEvent;
-import com.uno_restart.event.PickFirstCardEvent;
-import com.uno_restart.event.SendCardEvent;
+import com.uno_restart.event.*;
 import com.uno_restart.exception.GameAbnormalException;
 import com.uno_restart.exception.PlayerAbnormalException;
 import com.uno_restart.exception.RoomAbnormalException;
@@ -15,12 +13,14 @@ import com.uno_restart.service.RoomService;
 import com.uno_restart.types.enums.EnumGameAction;
 import com.uno_restart.types.game.GameCard;
 import com.uno_restart.types.game.GamePlayerAction;
+import com.uno_restart.types.game.GamePlayerState;
 import com.uno_restart.types.game.GameTurnsFeedback;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.ConfigurableApplicationContext;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.util.ArrayList;
 import java.util.LinkedList;
@@ -46,8 +46,7 @@ public class GameDataFetcher {
         roomService.checkPlayerInRoom(roomID, playerName);
         gameService.checkTurn(roomID, playerName);
 
-        GameCard firstCard = gameService.pickFirstCard(roomID);
-        context.publishEvent(new PickFirstCardEvent(roomID, playerName, firstCard));
+        gameService.pickFirstCard(roomID);
 
         return true;
     }
@@ -65,11 +64,9 @@ public class GameDataFetcher {
             gameService.checkCard(roomID, card);
         } catch (GameAbnormalException e) {
             gameService.reTry(roomID);
-            context.publishEvent(new SendCardEvent(roomID, null, playerName));
         }
 
         gameService.sendACard(roomID, playerName, card);
-        context.publishEvent(new SendCardEvent(roomID, card, playerName));
 
         return true;
     }
@@ -130,7 +127,8 @@ public class GameDataFetcher {
         return true;
     }
 
-    // TODO 游戏开始后, 在玩家订阅之前, 游戏初始化就已经完成, 导致监听器无法向前端反馈初始化过程
+    // TODO 游戏开始后, 在玩家订阅之前, 游戏初始化就已经完成, 导致监听器无法向前端反馈初始化过程, 可以改为监听器, 监听到玩家订阅后再初始化房间
+    // TODO 订阅能不能使用登录拦截器验证登录? 可以试试, 但是改不改不一定
     @DgsSubscription
     public Flux<GameTurnsFeedback> gameWaitNextReaction(String roomID, String token) {
         Object playerName = StpUtil.getLoginIdByToken(token);
@@ -195,7 +193,54 @@ public class GameDataFetcher {
                             );
                         }
                     });
+
+                    // 游戏中止时结束订阅
+                    context.addApplicationListener((ApplicationListener<GameInterruptionEvent>) event -> {
+                        if (roomID.equals(event.getSource())) { // 忽略其他信号
+                            sink.error(new GameAbnormalException("游戏中止"));
+                        }
+                    });
+
+                    // 游戏结束时终止订阅
+                    context.addApplicationListener((ApplicationListener<GameOverEvent>) event -> {
+                        if (roomID.equals(event.getSource())) { // 忽略其他信号
+                            sink.complete();
+                        }
+                    });
                 }
         );
+    }
+
+    @DgsSubscription
+    public Mono<List<GamePlayerState>> gameRanking(String roomID, String token) {
+        Object playerName = StpUtil.getLoginIdByToken(token);
+        if (playerName == null) {
+            return Mono.error(new PlayerAbnormalException("未能读取到有效 token"));
+        }
+
+        try {
+            roomService.checkRoomExists(roomID);
+            roomService.checkPlayerInRoom(roomID, playerName.toString());
+        } catch (RoomAbnormalException | PlayerAbnormalException e) {
+            return Mono.error(e);
+        }
+
+        return Mono.create(sink -> {
+            // 监听到游戏结束, 返回排名
+            context.addApplicationListener((ApplicationListener<GameOverEvent>) event -> {
+                if (roomID.equals(event.getSource())) {
+                    List<GamePlayerState> rank = gameService.calcGameRank(roomID);
+                    roomService.saveRankInfo(roomID, rank);
+                    sink.success(rank);
+                }
+            });
+
+            // 监听到游戏中断, 停止订阅
+            context.addApplicationListener((ApplicationListener<GameInterruptionEvent>) event -> {
+                if (roomID.equals(event.getSource())) { // 忽略其他信号
+                    sink.error(new GameAbnormalException("游戏中止"));
+                }
+            });
+        });
     }
 }

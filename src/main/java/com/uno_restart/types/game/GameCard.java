@@ -63,4 +63,8 @@ public class GameCard implements Comparable<GameCard> {
         // 最后根据卡牌id排序
         else return this.cardID - o.cardID;
     }
+
+    public int getScore(){
+        return cardType.getScore();
+    }
 }

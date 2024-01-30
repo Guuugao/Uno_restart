@@ -2,11 +2,12 @@ package com.uno_restart.dataFetcher;
 
 import cn.dev33.satoken.stp.StpUtil;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.google.common.hash.Hashing;
 import com.netflix.graphql.dgs.DgsComponent;
 import com.netflix.graphql.dgs.DgsMutation;
 import com.netflix.graphql.dgs.DgsQuery;
+import com.uno_restart.exception.PlayerAbnormalException;
 import com.uno_restart.service.PlayerService;
+import com.uno_restart.service.RoomService;
 import com.uno_restart.types.player.PlayerAvatarFeedback;
 import com.uno_restart.types.player.PlayerContact;
 import com.uno_restart.types.player.PlayerInfo;
@@ -16,34 +17,42 @@ import graphql.schema.DataFetchingEnvironment;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Base64;
+import java.util.List;
 import java.util.stream.Collectors;
 
 // TODO 修改成员变量可能需要线程安全
-
 @Slf4j
 @DgsComponent
 public class PlayerDataFetcher {
     @Autowired
     PlayerService playerService;
     @Autowired
+    RoomService roomService;
+    @Autowired
     Base64.Encoder encoder;
-    private static final String UPLOAD_PATH = "./uploads/";
-    private static final List<String> ALLOWED_AVATAR_TYPES = new ArrayList<>(
-            Arrays.asList("image/jpeg", "image/png", "image/gif"));
-    private static final long ALLOWED_AVATAR_SIZE = 3 * 1024 * 1024;
 
-    private static final int MIN_PLAYER_NAME_LEN = 2;
-    private static final int MAX_PLAYER_NAME_LEN = 8;
+    @Value("${global-setting.avatar-upload-path: ./uploads/}")
+    private String UPLOAD_PATH;
+    @Value("${global-setting.allowed-avatar-types: image/jpeg, image/png, image/gif}")
+    private List<String> ALLOWED_AVATAR_TYPES;
+    @Value("${global-setting.max-avatar-size: 3145728}")
+    private long MAX_AVATAR_SIZE;
 
     @DgsQuery
     public PlayerInfo me() {
+        log.info(String.valueOf(ALLOWED_AVATAR_TYPES));
+        log.info(String.valueOf(UPLOAD_PATH));
+        log.info(String.valueOf(MAX_AVATAR_SIZE));
         StpUtil.checkLogin();
         return playerService.getById(StpUtil.getLoginIdAsString());
     }
@@ -92,52 +101,63 @@ public class PlayerDataFetcher {
         return new DefaultConnection<>(edges, pageInfo);
     }
 
+    // 退出前先退出房间
+    @DgsMutation
+    public PlayerInfoFeedback playerQuit() {
+        StpUtil.checkLogin();
+
+        String playerName = StpUtil.getLoginIdAsString();
+        roomService.quit(playerName);
+        playerService.modifyOnlineState(false, playerName);
+
+        return new PlayerInfoFeedback(true)
+                .setMessage("退出成功");
+    }
+
     @DgsMutation
     public PlayerInfoFeedback playerLogout() {
+        StpUtil.checkLogin();
+
+        String playerName = StpUtil.getLoginIdAsString();
+        roomService.quit(playerName);
+        playerService.modifyOnlineState(false, playerName);
         StpUtil.logout();
+
         return new PlayerInfoFeedback(true)
                 .setMessage("注销成功");
     }
 
     @DgsMutation
-    public PlayerInfoFeedback playerLogin(@NotNull String playerName, @NotNull String password) {
-        PlayerInfoFeedback feedback = new PlayerInfoFeedback(false);
+    public PlayerInfoFeedback playerLogin(@NotNull String playerName, @NotNull String password)
+            throws PlayerAbnormalException {
+        playerService.checkPlayerName(playerName);
 
-        if (checkPlayerName(playerName)) {
-            if (comparePassword(playerName, password)) {
-                feedback.setSuccess(true)
-                        .setMessage("登陆成功");
-                StpUtil.login(playerName);
-            } else {
-                feedback.setMessage("用户名或密码错误");
-            }
+        PlayerInfoFeedback feedback = new PlayerInfoFeedback(false);
+        if (playerService.comparePassword(playerName, password)) {
+            feedback.setSuccess(true)
+                    .setMessage("登陆成功");
+            playerService.modifyOnlineState(true, playerName);
+            StpUtil.login(playerName);
         } else {
-            feedback.setMessage("登录失败, 请检查用户名或密码格式是否正确");
+            feedback.setMessage("用户名或密码错误");
         }
 
         return feedback;
     }
 
     @DgsMutation
-    public PlayerInfoFeedback playerRegister(@NotNull String playerName, @NotNull String password) {
+    public PlayerInfoFeedback playerRegister(@NotNull String playerName, @NotNull String password)
+            throws PlayerAbnormalException {
+        playerService.checkPlayerName(playerName);
+
         PlayerInfoFeedback feedback = new PlayerInfoFeedback(false);
-
-        if (checkPlayerName(playerName)) {
-            String salt = UUID.randomUUID().toString();
-            String encodePassword = encodeWithSalt(password, salt);
-
-            PlayerInfo player = new PlayerInfo(playerName, encodePassword, salt);
-            try {
-                playerService.save(player);
-                feedback.setSuccess(true)
-                        .setMessage("注册成功");
-                return feedback;
-            } catch (DuplicateKeyException e) {
-                feedback.setMessage("注册失败, 用户名已被占用");
-                return feedback;
-            }
-        } else {
-            feedback.setMessage("注册失败, 请检查用户名或密码格式是否正确");
+        try {
+            playerService.playerRegister(playerName, password);
+            feedback.setSuccess(true)
+                    .setMessage("注册成功");
+        } catch (DuplicateKeyException e) {
+            feedback.setMessage("注册失败, 用户名已被占用");
+            return feedback;
         }
 
         return feedback;
@@ -148,11 +168,9 @@ public class PlayerDataFetcher {
         StpUtil.checkLogin();
 
         PlayerInfoFeedback feedback = new PlayerInfoFeedback(false);
-
         String playerName = StpUtil.getLoginIdAsString();
-        if (comparePassword(playerName, oldPassword)) {
-            String salt = UUID.randomUUID().toString();
-            playerService.updatePassword(encodeWithSalt(newPassword, salt), salt, playerName);
+        if (playerService.comparePassword(playerName, oldPassword)) {
+            playerService.modifyPassword(playerName, newPassword);
             feedback.setSuccess(true)
                     .setMessage("密码修改成功, 请重新登录");
             StpUtil.logout();
@@ -160,30 +178,24 @@ public class PlayerDataFetcher {
             feedback.setMessage("原密码错误, 请重新输入");
         }
 
-
         return feedback;
     }
 
     @DgsMutation
-    public PlayerInfoFeedback playerNameModify(String newPlayerName) {
+    public PlayerInfoFeedback playerNameModify(String newPlayerName)
+            throws PlayerAbnormalException {
         StpUtil.checkLogin();
+        playerService.checkPlayerName(newPlayerName);
 
         PlayerInfoFeedback feedback = new PlayerInfoFeedback(false);
-
-        if (checkPlayerName(newPlayerName)) {
-            String playerName = StpUtil.getLoginIdAsString();
-            try {
-                playerService.updatePlayerName(newPlayerName, playerName);
-                feedback.setSuccess(true)
-                        .setMessage("用户名修改成功, 请重新登录");
-                StpUtil.logout();
-                return feedback;
-            } catch (DuplicateKeyException e) {
-                feedback.setMessage("用户名重复, 请重新输入");
-                return feedback;
-            }
-        } else {
-            feedback.setMessage("用户名修改失败, 请检查名称格式");
+        try {
+            playerService.modifyPlayerName(StpUtil.getLoginIdAsString(), newPlayerName);
+            feedback.setSuccess(true)
+                    .setMessage("用户名修改成功, 请重新登录");
+            StpUtil.logout();
+        } catch (DuplicateKeyException e) {
+            feedback.setMessage("用户名重复, 请重新输入");
+            return feedback;
         }
 
         return feedback;
@@ -196,7 +208,7 @@ public class PlayerDataFetcher {
         MultipartFile multipartFile = dfe.getArgument("avatar");
         PlayerAvatarFeedback feedback = new PlayerAvatarFeedback(false);
 
-        if (multipartFile.getSize() > ALLOWED_AVATAR_SIZE) {
+        if (multipartFile.getSize() > MAX_AVATAR_SIZE) {
             feedback.setMessage("修改失败, 头像文件过大");
         } else if (ALLOWED_AVATAR_TYPES.contains(multipartFile.getContentType())) {
             // 使用用户名作为文件名称, 保证唯一性, 可读
@@ -209,7 +221,7 @@ public class PlayerDataFetcher {
                 String savePath = UPLOAD_PATH + playerName + type;
                 multipartFile.transferTo(new File(savePath));
 
-                playerService.updateAvatarpath(savePath, playerName);
+                playerService.modifyAvatarPath(playerName, savePath);
 
                 feedback.setSuccess(true)
                         .setMessage("头像上传成功");
@@ -226,50 +238,18 @@ public class PlayerDataFetcher {
     }
 
     @DgsMutation
-    public PlayerInfoFeedback playerContactModify(String email, String phone) throws JsonProcessingException {
+    public PlayerInfoFeedback playerContactModify(String email, String phone)
+            throws JsonProcessingException, PlayerAbnormalException {
         StpUtil.checkLogin();
+        playerService.checkEmail(email);
+        playerService.checkPhone(email);
 
         PlayerInfoFeedback feedback = new PlayerInfoFeedback(false);
+        playerService.modifyContact(StpUtil.getLoginIdAsString(), new PlayerContact(email, phone));
 
-        if (checkEmail(email) && checkPhone(phone)) {
-            String playerName = StpUtil.getLoginIdAsString();
-            playerService.updateContact(new PlayerContact(email, phone), playerName);
-
-            feedback.setSuccess(true)
-                    .setMessage("联系方式修改成功");
-        } else {
-            feedback.setMessage("联系方式修改失败, 邮箱或手机号码格式不正确");
-        }
+        feedback.setSuccess(true)
+                .setMessage("联系方式修改成功");
 
         return feedback;
-    }
-
-    private boolean checkPlayerName(String playerName) {
-        return playerName.length() >= MIN_PLAYER_NAME_LEN && playerName.length() <= MAX_PLAYER_NAME_LEN;
-    }
-
-    private boolean checkEmail(String email) {
-        // 邮箱为空代表清除邮箱
-        return email == null || email.matches("^[a-z0-9A-Z]+[-|a-z0-9A-Z._]+@([a-z0-9A-Z]+(-[a-z0-9A-Z]+)?\\.)+[a-z]{2,}$");
-    }
-
-    private boolean checkPhone(String phone) {
-        // 同上
-        return phone == null || phone.matches("^1[3456789]\\d{9}$");
-    }
-
-    private boolean checkPassword(String password) {
-        return password.matches("^(?=.*[a-zA-Z])(?=.*\\d)[a-zA-Z\\d]{6,16}$");
-    }
-
-    private String encodeWithSalt(String password, String salt) {
-        return Hashing.sha256()
-                .hashString(password + salt, StandardCharsets.UTF_8)
-                .toString();
-    }
-
-    private boolean comparePassword(String playerName, String input) {
-        return playerService.getPasswordByPlayerName(playerName)
-                .equals(encodeWithSalt(input, playerService.getSalt(playerName)));
     }
 }

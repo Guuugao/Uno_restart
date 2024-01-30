@@ -50,11 +50,6 @@ public class RoomDataFetcher {
     @Autowired
     private ConfigurableApplicationContext context;
 
-    private static final int minPlayerCnt = 2;
-    private static final int maxPlayerCnt = 10;
-    private static final int minRoomNameLen = 2;
-    private static final int maxRoomNameLen = 8;
-
     @DgsQuery
     public RoomInfo queryRoomByID(String roomID) {
         StpUtil.checkLogin();
@@ -194,18 +189,14 @@ public class RoomDataFetcher {
         return feedback;
     }
 
-    /* TODO
-     * UNO游戏原则上允许2-10人参与。
-     * 但为了保证游戏的趣味性，降低运气因素，一般建议3-4人参与最佳。
-     * 如果人数超过5个，可以考虑多加1副牌，使游戏进程更顺利
-     * */
+    // TODO 如果游玩中玩家创建房间
     @DgsMutation
     public RoomFeedback roomCreate(String roomName, Integer maxPlayerCount, Boolean isPrivate, String password) {
         StpUtil.checkLogin();
 
         RoomFeedback feedback = new RoomFeedback(false, false);
 
-        if (!checkPlayerCount(maxPlayerCount) || !checkRoomName(roomName)) {
+        if (!roomService.isPlayerCntOK(maxPlayerCount) || !roomService.isRoomNameOK(roomName)) {
             feedback.setMessage("创建房间失败, 请检查房间设置");
         } else {
             String playerName = StpUtil.getLoginIdAsString();
@@ -234,6 +225,7 @@ public class RoomDataFetcher {
         roomService.checkRoomExists(roomID);
         roomService.checkPlayerInRoom(roomID, StpUtil.getLoginIdAsString());
         roomService.checkRoomFull(roomID);
+        roomService.checkIsPlaying(roomID);
 
         PlayerInfo player = playerService.getById(StpUtil.getLoginIdAsString());
         if (roomService.join(player, roomID, password)) {
@@ -249,21 +241,17 @@ public class RoomDataFetcher {
         return feedback;
     }
 
+    // TODO 若游玩中退出, 则结束游戏
     @DgsMutation
-    public RoomFeedback roomQuit(String roomID)
-            throws RoomAbnormalException, PlayerAbnormalException {
+    public RoomFeedback roomQuit() throws RoomAbnormalException {
         RoomFeedback feedback = new RoomFeedback(false, false);
-
         StpUtil.checkLogin();
-        roomService.checkRoomExists(roomID);
-        roomService.checkPlayerInRoom(roomID, StpUtil.getLoginIdAsString());
+        String playerName = StpUtil.getLoginIdAsString();
+        roomService.checkPlayerInAnyRoom(playerName);
 
-        if (roomService.quit(roomID, StpUtil.getLoginIdAsString())) {
-            feedback.setSuccess(true)
-                    .setMessage("退出房间成功");
-        } else {
-            feedback.setMessage("退出失败, 未加入任何房间");
-        }
+        roomService.quit(playerName);
+        feedback.setSuccess(true)
+                .setMessage("退出房间成功");
 
         return feedback;
     }
@@ -276,21 +264,16 @@ public class RoomDataFetcher {
         StpUtil.checkLogin();
         roomService.checkRoomExists(roomID);
         roomService.checkPlayerInRoom(roomID, StpUtil.getLoginIdAsString());
+        roomService.checkIsPlaying(roomID);
 
         String playerName = StpUtil.getLoginIdAsString();
         roomService.ready(roomID, playerName, true);
-        RoomInfo room = roomService.getRoom(roomID);
-        // 若玩家全部准备并且玩家数量大于最小玩家数量, 则开始
-        if (checkPlayerCount(room.getCurrentPlayerCount()) &&
-                room.getCurrentPlayerCount() == room.getReadyPlayerCnt()) {
-            context.publishEvent(new GameStartEvent(roomID));
-        }
 
         feedback.setSuccess(true)
                 .setMessage("玩家 " + playerName + " 已准备")
                 .setIsInsideRoom(true)
                 .setSelf(roomService.getPlayerState(playerName))
-                .setRoom(room);
+                .setRoom(roomService.getRoom(roomID));
 
 
         return feedback;
@@ -304,6 +287,7 @@ public class RoomDataFetcher {
         StpUtil.checkLogin();
         roomService.checkRoomExists(roomID);
         roomService.checkPlayerInRoom(roomID, StpUtil.getLoginIdAsString());
+        roomService.checkIsPlaying(roomID);
 
         String playerName = StpUtil.getLoginIdAsString();
         roomService.ready(roomID, playerName, false);
@@ -329,6 +313,7 @@ public class RoomDataFetcher {
         try {
             roomService.checkRoomExists(roomID);
             roomService.checkPlayerInRoom(roomID, playerName.toString());
+            roomService.checkIsPlaying(roomID);
         } catch (RoomAbnormalException | PlayerAbnormalException e) {
             return Mono.error(e);
         }
@@ -350,17 +335,11 @@ public class RoomDataFetcher {
             });
             // 监听房间关闭事件
             context.addApplicationListener((ApplicationListener<RoomCloseEvent>) event -> {
-                sink.success(); // 取消流, 若流已经开始, 则需要使用Disposable.dispose()
-                log.info("cancel subscribe of wait room " + event.getSource() + " start");
+                if (roomID.equals(event.getSource())) { // 忽略其他房间的信号
+                    sink.success(); // 取消流, 若流已经开始, 则需要使用Disposable.dispose()
+                    log.info("cancel subscribe of wait room " + event.getSource() + " start");
+                }
             });
         });
-    }
-
-    private boolean checkPlayerCount(Integer playerCount) {
-        return playerCount >= minPlayerCnt && playerCount <= maxPlayerCnt;
-    }
-
-    private boolean checkRoomName(String roomName) {
-        return roomName.length() >= minRoomNameLen && roomName.length() <= maxRoomNameLen;
     }
 }

@@ -1,15 +1,23 @@
 package com.uno_restart.service;
 
+import com.uno_restart.event.GameInterruptionEvent;
+import com.uno_restart.event.GameStartEvent;
+import com.uno_restart.event.RoomCloseEvent;
 import com.uno_restart.exception.PlayerAbnormalException;
 import com.uno_restart.exception.RoomAbnormalException;
+import com.uno_restart.types.game.GamePlayerState;
 import com.uno_restart.types.player.PlayerInfo;
 import com.uno_restart.types.room.RoomInfo;
 import com.uno_restart.types.room.RoomPlayerState;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.jetbrains.annotations.NotNull;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -19,6 +27,12 @@ import java.util.Optional;
 @Getter
 @Component
 public class RoomService {
+    private static final int minPlayerCnt = 2;
+    private static final int maxPlayerCnt = 10;
+    private static final int minRoomNameLen = 2;
+    private static final int maxRoomNameLen = 8;
+
+
     // 玩家id及其及加入的房间
     // key: playerName value: roomID
     private final Map<String, String> playerRooms;
@@ -31,11 +45,15 @@ public class RoomService {
     // 所有房间
     // key: roomID value: roomInfo
     private final Map<String, RoomInfo> rooms;
+    @Autowired
+    ApplicationEventPublisher eventPublisher;
+    @Autowired
+    PlayerService playerService;
 
     public RoomInfo createRoom(String roomName, Boolean isPrivate,
                                Integer maxPlayerCount, String password, String playerName) {
         // 若已加入房间, 则退出
-        quit(playerRooms.get(playerName), playerName);
+        quit(playerName);
         RoomInfo room = new RoomInfo(roomName, isPrivate, maxPlayerCount, password);
         rooms.put(room.getRoomID(), room);
 
@@ -49,7 +67,7 @@ public class RoomService {
 
     public boolean join(PlayerInfo player, String roomID, String password) {
         // 若已加入房间, 则先退出
-        quit(roomID, player.getPlayerName());
+        quit(player.getPlayerName());
         RoomInfo room = rooms.get(roomID);
 
         // 若需要密码且密码错误, 则返回
@@ -66,31 +84,37 @@ public class RoomService {
         return true;
     }
 
-    public boolean quit(String roomID, String playerName) {
+    public void quit(String playerName) {
+        String roomID = playerRooms.get(playerName);
         // 若玩家未加入房间, 则不处理
-        if (!playerRooms.get(playerName).equals(roomID)) return false;
+        if (roomID.isEmpty()) return; // 加入房间和创建房间也需要先退出, 所以需要检查一遍是否加入房间
+
+        if (isRoomPlaying(roomID)) {
+            eventPublisher.publishEvent(new GameInterruptionEvent(roomID));
+        }
+
         playerRooms.remove(playerName);
         RoomInfo room = rooms.get(roomID);
         // 将玩家从指定房间踢出
         room.setCurrentPlayerCount(-1);
         room.getJoinedPlayer().removeIf(playerState ->
                 playerState.getPlayer().getPlayerName().equals(playerName));
+
         // 若房间没人则关闭房间
         if (room.getCurrentPlayerCount() == 0) {
             rooms.remove(roomID);
             publicRooms.remove(roomID);
             publicRooms.remove(roomID);
+            eventPublisher.publishEvent(new RoomCloseEvent(roomID));
 
             log.info("room " + roomID + " is closed");
         }
 
-        log.info("player " + playerName + " quit room " + roomID);
 
-        return true;
+        log.info("player " + playerName + " quit room " + roomID);
     }
 
     public void ready(String roomID, String playerName, boolean isReady){
-        // 若玩家未加入房间, 则不处理
         RoomInfo room = rooms.get(roomID);
         Optional<RoomPlayerState> first = room.getJoinedPlayer().stream()
                 .filter(playerState -> playerState.getPlayer().getPlayerName().equals(playerName))
@@ -99,6 +123,12 @@ public class RoomService {
             roomPlayerState.setIsReady(isReady);
             room.setReadyPlayerCnt(isReady ? 1 : -1); // 根据玩家是否准备, 修改已准备玩家数量
             log.info("player " + playerName + " is ready: " + isReady);
+
+            // 若玩家全部准备并且玩家数量大于最小玩家数量, 则开始
+            if (isPlayerCntOK(room.getCurrentPlayerCount()) &&
+                    room.getCurrentPlayerCount() == room.getReadyPlayerCnt()) {
+                eventPublisher.publishEvent(new GameStartEvent(roomID));
+            }
         });
     }
 
@@ -118,6 +148,16 @@ public class RoomService {
         return rooms.get(playerRooms.get(playerName));
     }
 
+    // 根据排名更新玩家数据, 参数需要有序
+    public void saveRankInfo(String roomID, List<GamePlayerState> rank){
+        Map<String, PlayerInfo> players = rooms.get(roomID).getPlayerInfos();
+        players.get(rank.get(0).getPlayerName()).addWinTimes();
+        for (int i = 1; i < rank.size(); i++) {
+            players.get(rank.get(i).getPlayerName()).addFailTimes();
+        }
+        playerService.saveBatch(players.values()); // 批量保存数据
+    }
+
     // 检查房间是否存在
     public void checkRoomExists(String roomID) throws RoomAbnormalException {
         if (!rooms.containsKey(roomID)) 
@@ -130,9 +170,35 @@ public class RoomService {
             throw new PlayerAbnormalException("玩家未加入房间 " + roomID);
     }
 
+    // 玩家未加入任何房间的情况下抛出异常
+    public void checkPlayerInAnyRoom(String playerName) throws RoomAbnormalException {
+        if (!playerRooms.containsKey(playerName))
+            throw new RoomAbnormalException("玩家未加入任何房间");
+    }
+
     public void checkRoomFull(String roomID) throws RoomAbnormalException {
         if (rooms.get(roomID).getCurrentPlayerCount().equals(rooms.get(roomID).getMaxPlayerCount()))
             throw new RoomAbnormalException("房间已满");
+    }
+
+    // 在房间正在进行游戏时抛出异常
+    public void checkIsPlaying(String roomID) throws RoomAbnormalException {
+        if (isRoomPlaying(roomID))
+            throw new RoomAbnormalException("正在游戏中");
+    }
+
+    @NotNull
+    private Boolean isRoomPlaying(String roomID) {
+        return rooms.get(roomID).getIsPlaying();
+    }
+
+
+    public boolean isPlayerCntOK(Integer playerCount) {
+        return playerCount >= minPlayerCnt && playerCount <= maxPlayerCnt;
+    }
+
+    public boolean isRoomNameOK(String roomName) {
+        return roomName.length() >= minRoomNameLen && roomName.length() <= maxRoomNameLen;
     }
 
     public RoomService() {

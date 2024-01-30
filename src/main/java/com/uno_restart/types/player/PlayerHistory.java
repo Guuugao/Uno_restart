@@ -22,13 +22,13 @@ public class PlayerHistory {
         this.totalGames = winTimes + failTimes;
     }
 
-    public void setWinTimes(final Integer winTimes) {
-        this.winTimes = winTimes;
-        this.totalGames = winTimes + this.failTimes;
+    public void addWinTimes() {
+        this.winTimes += 1;
+        this.totalGames += 1;
     }
 
-    public void setFailTimes(final Integer failTimes) {
-        this.failTimes = failTimes;
-        this.totalGames = this.winTimes + failTimes;
+    public void addFailTimes() {
+        this.failTimes += 1;
+        this.totalGames += 1;
     }
 }

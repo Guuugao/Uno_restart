@@ -1,6 +1,9 @@
 package com.uno_restart.service;
 
 import com.uno_restart.event.DrawCardEvent;
+import com.uno_restart.event.GameOverEvent;
+import com.uno_restart.event.PickFirstCardEvent;
+import com.uno_restart.event.SendCardEvent;
 import com.uno_restart.exception.GameAbnormalException;
 import com.uno_restart.types.enums.EnumGameDirection;
 import com.uno_restart.types.enums.EnumGamePlayerStatus;
@@ -86,6 +89,12 @@ public class GameService {
         movieCardToDiscardPile(roomID, playerName, card); // 将牌移入弃牌堆
         game.setPreviousCard(card); // 记录当前卡牌作为下回合出牌依据
 
+        if (game.getGamePlayerInfo(playerName).getRemainingCardCnt() == 0) {
+
+            eventPublisher.publishEvent(new GameOverEvent(roomID));
+        }
+        eventPublisher.publishEvent(new SendCardEvent(roomID, card, playerName));
+
         switch (card.getCardType()) {
             case REVERSE -> reverseGameDirection(game);
             case SKIP -> movieIndex(game); // 额外移动一次下标即代表跳过回合
@@ -100,6 +109,7 @@ public class GameService {
         }
         movieIndex(game);
 
+
         log.trace("player " + playerName + " in room " + roomID + " send " + card);
     }
 
@@ -110,16 +120,16 @@ public class GameService {
         log.info("room " + roomID + " current player give up to send card");
     }
 
-    public GameCard pickFirstCard(String roomID) throws GameAbnormalException {
+    public void pickFirstCard(String roomID) throws GameAbnormalException {
         Game game = games.get(roomID);
         if (game.getPreviousCard() != null)
             throw new GameAbnormalException("初始卡牌已确定");
         GameCard firstCard = game.getDrawPile().removeFirst();
         game.getDiscardPile().add(firstCard);
         game.setPreviousCard(firstCard);
+        eventPublisher.publishEvent(new PickFirstCardEvent(roomID, game.getCurPlayerName(), firstCard));
 
         log.info("room " + roomID + " first card is " + firstCard);
-        return firstCard;
     }
 
     // 修改玩家状态为喊过Uno
@@ -192,7 +202,9 @@ public class GameService {
 
     // 当前出牌不符合规则, 设置当前出牌玩家状态为retryOnTurns
     public void reTry(String roomID) {
-        games.get(roomID).getCurGamePlayerState().setStatus(EnumGamePlayerStatus.retryOnTurns);
+        GamePlayerState playerState = games.get(roomID).getCurGamePlayerState();
+        playerState.setStatus(EnumGamePlayerStatus.retryOnTurns);
+        eventPublisher.publishEvent(new SendCardEvent(roomID, null, playerState.getPlayerName()));
     }
 
     // 获取游戏玩家信息集合
@@ -218,6 +230,20 @@ public class GameService {
             game.setGameDirection(EnumGameDirection.clockwise);
 
         log.info("room " + game.getRoomID() + " direction is " + game.getGameDirection());
+    }
+
+    // 计算游戏分数及排名
+    public List<GamePlayerState> calcGameRank(String roomID) {
+        Map<String, GamePlayerInfo> gamePlayers = games.get(roomID).getGamePlayers();
+        List<GamePlayerState> playerList = games.get(roomID).getPlayerList();
+        return playerList.stream()
+                .peek(gamePlayerState -> gamePlayerState.setTotalScore(calcScore(gamePlayers.get(gamePlayerState.getPlayerName())))) // 计算每个玩家的分数总合
+                .sorted(Comparator.comparingInt(GamePlayerState::getTotalScore)).toList();
+    }
+
+    private int calcScore(GamePlayerInfo gamePlayer) {
+        return gamePlayer.getHandCards().values()
+                .stream().mapToInt(GameCard::getScore).sum();
     }
 
     // 在玩家还有牌可以打出时抛出异常

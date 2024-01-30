@@ -36,3 +36,13 @@ sa-token:
   token-style: uuid
   # 是否输出操作日志
   is-log: true
+
+
+global-setting:
+  # 头像上传路径
+  avatar-upload-path: ./uploads/
+  # 最大头像大小
+  max-avatar-size: 3145728 # 3MB
+  #允许的头像类型
+  allowed-avatar-types: image/jpeg, image/png, image/gif
+

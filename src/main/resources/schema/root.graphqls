@@ -17,7 +17,8 @@ type Query {
 # 变更
 type Mutation {
     # 用户登录相关
-    playerLogout: PlayerInfoFeedback!
+    playerQuit: PlayerInfoFeedback! # 仅退出, 不清除token
+    playerLogout: PlayerInfoFeedback! # 会清除token, 下次需要重新登录
     playerLogin(playerName: String!, password: String!) : PlayerInfoFeedback!
     playerRegister(playerName: String!, password: String!) : PlayerInfoFeedback!
 
@@ -30,7 +31,7 @@ type Mutation {
     # 游戏房间相关
     roomCreate(roomName: String!, maxPlayerCount: Int = 4, isPrivate: Boolean = false, password: String) : RoomFeedback!
     roomJoin(roomID: ID!, password: String) : RoomFeedback!
-    roomQuit(roomID: ID!) : RoomFeedback!
+    roomQuit : RoomFeedback!
     roomPlayerReady(roomID: ID!) : RoomFeedback!
     roomPlayerUnready(roomID: ID!) : RoomFeedback!
 
@@ -47,4 +48,5 @@ type Mutation {
 type Subscription {
     roomWaitStart(roomID: ID!, token: ID!) : GameSettings
     gameWaitNextReaction(roomID: ID!, token: ID!) : GameTurnsFeedback
+    gameRanking(roomID: ID!, token: ID!): [GamePlayerState!]!
 }
