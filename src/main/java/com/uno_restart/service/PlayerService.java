@@ -11,6 +11,7 @@ import com.uno_restart.mapper.PlayerInfoMapper;
 import com.uno_restart.types.player.PlayerContact;
 import com.uno_restart.types.player.PlayerHistory;
 import com.uno_restart.types.player.PlayerInfo;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
@@ -21,6 +22,7 @@ import java.util.List;
 import java.util.UUID;
 
 
+@Slf4j
 @Service
 public class PlayerService
         extends ServiceImpl<PlayerInfoMapper, PlayerInfo> {
@@ -82,6 +84,7 @@ public class PlayerService
         LambdaUpdateWrapper<PlayerInfo> wrapper = new LambdaUpdateWrapper<>();
         wrapper.eq(PlayerInfo::getPlayerName, playerName).set(PlayerInfo::getIsOnline, isOnline);
         this.update(wrapper);
+        log.debug("player " + playerName + ": modify online state " + isOnline);
     }
 
     public List<PlayerInfo> selectPlayerInfoPage(String playerName, Integer first, String after) {
@@ -103,24 +106,29 @@ public class PlayerService
         String encodePassword = encodeWithSalt(password, salt);
         PlayerInfo player = new PlayerInfo(playerName, encodePassword, salt);
         save(player);
+        log.debug("player " + playerName + ": register");
     }
 
     public void modifyPlayerName(String playerName, String newPlayerName) {
         updatePlayerName(newPlayerName, playerName);
+        log.debug("player " + playerName + ": modify player name " + newPlayerName);
     }
 
     public void modifyContact(String playerName, PlayerContact contact)
             throws JsonProcessingException {
         updateContact(contact, playerName);
+        log.debug("player " + playerName + ": modify contact " + contact);
     }
 
     public void modifyAvatarPath(String playerName, String savePath) {
         updateAvatarpath(savePath, playerName);
+        log.debug("player " + playerName + ": modify avatar path " + savePath);
     }
 
     public void modifyPassword(String playerName, String newPassword){
         String salt = UUID.randomUUID().toString();
         updatePassword(encodeWithSalt(newPassword, salt), salt, playerName);
+        log.debug("player " + playerName + ": modify password " + newPassword);
     }
 
     // 在玩家名称格式错误的情况抛出异常

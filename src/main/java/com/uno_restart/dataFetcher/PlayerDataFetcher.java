@@ -29,7 +29,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 // TODO 修改成员变量可能需要线程安全
-@Slf4j
+
 @DgsComponent
 public class PlayerDataFetcher {
     @Autowired
@@ -48,9 +48,6 @@ public class PlayerDataFetcher {
 
     @DgsQuery
     public PlayerInfo me() {
-        log.info(String.valueOf(ALLOWED_AVATAR_TYPES));
-        log.info(String.valueOf(UPLOAD_PATH));
-        log.info(String.valueOf(MAX_AVATAR_SIZE));
         StpUtil.checkLogin();
         return playerService.getById(StpUtil.getLoginIdAsString());
     }

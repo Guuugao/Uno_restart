@@ -33,7 +33,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 // TODO 查询房间内玩家信息可以用sub datafetcher实现
-// TODO 若房间正在游玩, 则不接受部分请求
 @Slf4j
 @DgsComponent
 public class RoomDataFetcher {
@@ -189,7 +188,6 @@ public class RoomDataFetcher {
         return feedback;
     }
 
-    // TODO 如果游玩中玩家创建房间
     @DgsMutation
     public RoomFeedback roomCreate(String roomName, Integer maxPlayerCount, Boolean isPrivate, String password) {
         StpUtil.checkLogin();
@@ -204,6 +202,7 @@ public class RoomDataFetcher {
             RoomInfo room = roomService.createRoom(roomName, isPrivate, maxPlayerCount, password, playerName);
             String roomID = room.getRoomID();
 
+            // 若玩家已加入某个房间则会先退出, 若房间正在游戏, 则会中止
             roomService.join(player, roomID, password);
 
             feedback.setSuccess(true)
@@ -211,6 +210,8 @@ public class RoomDataFetcher {
                     .setIsInsideRoom(true)
                     .setRoom(room)
                     .setSelf(roomService.getPlayerState(playerName));
+
+            log.info("room " + roomID + ": created");
         }
 
         return feedback;
@@ -234,6 +235,8 @@ public class RoomDataFetcher {
                     .setIsInsideRoom(true)
                     .setRoom(roomService.getRoom(roomID))
                     .setSelf(roomService.getPlayerState(player.getPlayerName()));
+
+            log.info("room " + roomID + ": " + StpUtil.getLoginIdAsString() + " join");
         } else {
             feedback.setMessage("加入失败, 密码错误");
         }
@@ -241,7 +244,6 @@ public class RoomDataFetcher {
         return feedback;
     }
 
-    // TODO 若游玩中退出, 则结束游戏
     @DgsMutation
     public RoomFeedback roomQuit() throws RoomAbnormalException {
         RoomFeedback feedback = new RoomFeedback(false, false);
@@ -252,6 +254,7 @@ public class RoomDataFetcher {
         roomService.quit(playerName);
         feedback.setSuccess(true)
                 .setMessage("退出房间成功");
+        log.info("room " + roomService.getPlayerRooms().get(playerName) + ": " + playerName + " quit");
 
         return feedback;
     }
@@ -275,7 +278,7 @@ public class RoomDataFetcher {
                 .setSelf(roomService.getPlayerState(playerName))
                 .setRoom(roomService.getRoom(roomID));
 
-
+        log.info("room " + roomID + ": " + playerName + " ready");
         return feedback;
     }
 
@@ -298,6 +301,7 @@ public class RoomDataFetcher {
                 .setSelf(roomService.getPlayerState(playerName))
                 .setRoom(roomService.getRoom(roomID));
 
+        log.info("room " + roomID + ": " + playerName + " unready");
         return feedback;
     }
 
@@ -318,6 +322,7 @@ public class RoomDataFetcher {
             return Mono.error(e);
         }
 
+        log.info("room " + roomID + ": " + "subscribe wait for start");
         return Mono.create(sink -> {
             // 监听游戏开始事件
             context.addApplicationListener((ApplicationListener<GameStartEvent>) event -> {
@@ -330,14 +335,16 @@ public class RoomDataFetcher {
                     room.setIsPlaying(true);
                     sink.success(gameSettings); // 通知客户端游戏开始
                     gameService.gameInit(gameSettings); // 初始化游戏必要信息
-                    log.info("game " + event.getSource() + " start");
+
+                    log.debug("room " + roomID + ": event-GameStartEvent-roomWaitStart");
                 }
             });
             // 监听房间关闭事件
             context.addApplicationListener((ApplicationListener<RoomCloseEvent>) event -> {
                 if (roomID.equals(event.getSource())) { // 忽略其他房间的信号
                     sink.success(); // 取消流, 若流已经开始, 则需要使用Disposable.dispose()
-                    log.info("cancel subscribe of wait room " + event.getSource() + " start");
+
+                    log.debug("room " + roomID + ": event-RoomCloseEvent-roomWaitStart");
                 }
             });
         });

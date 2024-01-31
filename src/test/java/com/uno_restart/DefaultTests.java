@@ -1,5 +1,7 @@
 package com.uno_restart;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.uno_restart.types.player.PlayerInfo;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -28,12 +30,9 @@ class DefaultTests {
         TimeUnit.SECONDS.sleep(5);
     }
 
-    @Test
-    public void foo(){
-        List<PlayerInfo> list = List.of(new PlayerInfo("1", "1", "1"));
-        Map<String, PlayerInfo> map = list.stream().collect(Collectors.toMap(PlayerInfo::getPlayerName, Function.identity()));
-        map.get("1").setPassword("2");
-        System.out.println(list);
-        System.out.println(map);
+    record demo(String name, int age) {
+        public static void foo(){
+            System.out.println("foo");
+        }
     }
 }

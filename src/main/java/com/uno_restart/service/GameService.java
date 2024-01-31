@@ -44,7 +44,7 @@ public class GameService {
             currentPlayerIndex = (currentPlayerIndex + 1) % playerList.size();
         }
 
-        log.debug("game " + roomID + " init");
+        log.debug("room " + roomID + ": game init");
     }
 
     // 抽取指定数量卡牌并添加至指定玩家手牌
@@ -59,7 +59,7 @@ public class GameService {
             Collections.shuffle(discardPile);
             drawPile.addAll(discardPile);
             discardPile.clear();
-            log.info("shuffle discard pile");
+            log.debug("room " + roomID + ": shuffle discard pile");
         }
 
         // 抽取指定数量的卡牌
@@ -67,11 +67,11 @@ public class GameService {
                 .limit(cnt).collect(Collectors.toCollection(LinkedList::new));
         // 将卡牌加入指定玩家手牌
         gamePlayerInfo.getHandCards().putAll(drawCards.stream()
-                .collect(Collectors.toMap(GameCard::getCardID, Function.identity())));
+                .collect(Collectors.toMap(GameCard::cardID, Function.identity())));
         // 修改手牌数量
         gamePlayerInfo.setRemainingCardCnt(cnt);
 
-        log.trace("player " + playerName + " draw cards " + drawCards + ", number of remaining cards " + gamePlayerInfo.getRemainingCardCnt());
+        log.trace("room " + roomID + ": " + playerName + " draw cards " + drawCards + ", number of remaining cards " + gamePlayerInfo.getRemainingCardCnt());
 
         // 从抽牌堆移除元素
         while (cnt > 0) {
@@ -95,7 +95,7 @@ public class GameService {
         }
         eventPublisher.publishEvent(new SendCardEvent(roomID, card, playerName));
 
-        switch (card.getCardType()) {
+        switch (card.cardType()) {
             case REVERSE -> reverseGameDirection(game);
             case SKIP -> movieIndex(game); // 额外移动一次下标即代表跳过回合
             case ADD2 -> { // 抽2张牌并跳过
@@ -110,14 +110,12 @@ public class GameService {
         movieIndex(game);
 
 
-        log.trace("player " + playerName + " in room " + roomID + " send " + card);
+        log.trace("room " + roomID + ": " + playerName + " send " + card);
     }
 
     // 当前玩家放弃出牌
     public void giveUpSendCard(String roomID) {
         movieIndex(games.get(roomID));
-
-        log.info("room " + roomID + " current player give up to send card");
     }
 
     public void pickFirstCard(String roomID) throws GameAbnormalException {
@@ -129,14 +127,13 @@ public class GameService {
         game.setPreviousCard(firstCard);
         eventPublisher.publishEvent(new PickFirstCardEvent(roomID, game.getCurPlayerName(), firstCard));
 
-        log.info("room " + roomID + " first card is " + firstCard);
+        log.debug("room " + roomID + ": first card is " + firstCard);
     }
 
     // 修改玩家状态为喊过Uno
     public void sayUno(String roomID) {
         GamePlayerState playerState = games.get(roomID).getCurGamePlayerState();
         playerState.setSayUno(true);
-        log.info("player " + playerState.getPlayerName() + " say Uno!");
     }
 
     // 获取所有玩家的游戏状态
@@ -158,9 +155,9 @@ public class GameService {
     private void movieCardToDiscardPile(String roomID, String playerName, GameCard card) {
         Game game = games.get(roomID);
         GamePlayerInfo gamePlayerInfo = game.getGamePlayerInfo(playerName);
-        game.getDiscardPile().add(gamePlayerInfo.getHandCards().remove(card.getCardID()));
+        game.getDiscardPile().add(gamePlayerInfo.getHandCards().remove(card.cardID()));
         gamePlayerInfo.setRemainingCardCnt(-1);
-        log.trace("room " + roomID + " movie " + card + " to discard pile");
+        log.trace("room " + roomID + ": " + playerName + "movie " + card + " to discard pile");
     }
 
     // 将"currentPlayerIndex"下标指向下一个玩家
@@ -172,7 +169,7 @@ public class GameService {
             game.setCurPlayerIndex((game.getCurPlayerIndex() - 1 + game.getPlayerCnt()) % game.getPlayerCnt());
         game.setGamePlayerStateByIndex(game.getCurPlayerIndex(), EnumGamePlayerStatus.onTurns);
         game.setGamePlayerStateByIndex(game.getNextPlayerIndex(), EnumGamePlayerStatus.nextTurns);
-        log.debug("room " + game.getRoomID() + " current turn " + game.getCurPlayerName() + "\nnext turn " + game.getNextPlayerName());
+        log.debug("room " + game.getRoomID() + ": current turn " + game.getCurPlayerName() + ", next turn " + game.getNextPlayerName());
     }
 
     // 检查到卡牌不能打出后抛出异常
@@ -187,10 +184,10 @@ public class GameService {
     public boolean isCardLegal(String roomID, GameCard card) {
         GameCard previousCard = games.get(roomID).getPreviousCard();
         // 当卡牌满足 颜色相同 | 图案相同 | 万能牌 时可以打出
-        return card.getCardType() == EnumUnoCardType.WILD ||
-                card.getCardType() == EnumUnoCardType.ADD4 ||
-                card.getCardType() == previousCard.getCardType() ||
-                card.getCardColor() == previousCard.getCardColor();
+        return card.cardType() == EnumUnoCardType.WILD ||
+                card.cardType() == EnumUnoCardType.ADD4 ||
+                card.cardType() == previousCard.cardType() ||
+                card.cardColor() == previousCard.cardColor();
     }
 
     // 检查是否为指定玩家回合
@@ -229,7 +226,7 @@ public class GameService {
         else
             game.setGameDirection(EnumGameDirection.clockwise);
 
-        log.info("room " + game.getRoomID() + " direction is " + game.getGameDirection());
+        log.debug("room " + game.getRoomID() + ": direction is " + game.getGameDirection());
     }
 
     // 计算游戏分数及排名

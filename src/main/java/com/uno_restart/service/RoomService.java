@@ -22,7 +22,6 @@ import java.util.Map;
 import java.util.Optional;
 
 
-// TODO boolean类型的返回值可以改成抛出异常, 简化playerDataFetcher代码
 @Slf4j
 @Getter
 @Component
@@ -60,8 +59,6 @@ public class RoomService {
         if (isPrivate) privateRooms.put(room.getRoomID(), room);
         else publicRooms.put(room.getRoomID(), room);
 
-        log.info("create room " + room.getRoomID());
-
         return room;
     }
 
@@ -78,8 +75,6 @@ public class RoomService {
         room.setCurrentPlayerCount(1);
         room.getJoinedPlayer().add(new RoomPlayerState(false, player));
         playerRooms.put(player.getPlayerName(), roomID);
-
-        log.info("player " + player.getPlayerName() + " join room " + roomID);
 
         return true;
     }
@@ -107,11 +102,8 @@ public class RoomService {
             publicRooms.remove(roomID);
             eventPublisher.publishEvent(new RoomCloseEvent(roomID));
 
-            log.info("room " + roomID + " is closed");
+            log.info("room " + roomID + ": close");
         }
-
-
-        log.info("player " + playerName + " quit room " + roomID);
     }
 
     public void ready(String roomID, String playerName, boolean isReady){
@@ -122,7 +114,6 @@ public class RoomService {
         first.ifPresent(roomPlayerState -> {
             roomPlayerState.setIsReady(isReady);
             room.setReadyPlayerCnt(isReady ? 1 : -1); // 根据玩家是否准备, 修改已准备玩家数量
-            log.info("player " + playerName + " is ready: " + isReady);
 
             // 若玩家全部准备并且玩家数量大于最小玩家数量, 则开始
             if (isPlayerCntOK(room.getCurrentPlayerCount()) &&

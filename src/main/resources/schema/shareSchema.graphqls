@@ -1,6 +1,6 @@
 scalar Upload
 
-# TODO 可以使用接口改为通用分页
+# TODO 使用接口改为通用分页
 #interface Node {
 #    ID: String!
 #}

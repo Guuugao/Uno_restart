@@ -47,6 +47,7 @@ public class GameDataFetcher {
         gameService.checkTurn(roomID, playerName);
 
         gameService.pickFirstCard(roomID);
+        log.info("room " + roomID + ": " + playerName + " picked first card");
 
         return true;
     }
@@ -64,9 +65,11 @@ public class GameDataFetcher {
             gameService.checkCard(roomID, card);
         } catch (GameAbnormalException e) {
             gameService.reTry(roomID);
+            log.info("room " + roomID + ": " + playerName + " retry the card");
         }
 
         gameService.sendACard(roomID, playerName, card);
+        log.info("room " + roomID + ": " + playerName + " send " + card);
 
         return true;
     }
@@ -86,8 +89,10 @@ public class GameDataFetcher {
         LinkedList<GameCard> card = gameService.drawCard(roomID,  playerName, 1);
         if (gameService.isCardLegal(roomID, card.getFirst())){
             gameService.sendACard(roomID, playerName, card.getFirst()); // 若可以打出则立即打出
+            log.info("room " + roomID + ": " + playerName + " draw card and immediately send");
         } else {
             gameService.giveUpSendCard(roomID); // 无法打出则放弃
+            log.info("room " + roomID + ": " + playerName + " draw card but can't send");
         }
 
         return true;
@@ -105,6 +110,7 @@ public class GameDataFetcher {
         gameService.checkOnlyOneCard(roomID, playerName);
 
         gameService.sayUno(roomID);
+        log.info("room " + roomID + ": " + playerName + " say Uno!");
 
         return true;
     }
@@ -120,15 +126,17 @@ public class GameDataFetcher {
         roomService.checkPlayerInRoom(roomID, who);
         gameService.checkOnlyOneCard(roomID, who);
 
+        log.info("room " + roomID + ": " + playerName + " think " + who + " forget say Uno");
         if (!gameService.didYouSayUno(roomID, who)) {
             gameService.drawCard(roomID, who, 2); // 没说则抽两张牌
+            log.info("room " + roomID + ": Oh " + who + " forget say Uno");
         }
+        log.info("room " + roomID + ": but " + who + " already said Uno");
 
         return true;
     }
 
     // TODO 游戏开始后, 在玩家订阅之前, 游戏初始化就已经完成, 导致监听器无法向前端反馈初始化过程, 可以改为监听器, 监听到玩家订阅后再初始化房间
-    // TODO 订阅能不能使用登录拦截器验证登录? 可以试试, 但是改不改不一定
     @DgsSubscription
     public Flux<GameTurnsFeedback> gameWaitNextReaction(String roomID, String token) {
         Object playerName = StpUtil.getLoginIdByToken(token);
@@ -144,6 +152,7 @@ public class GameDataFetcher {
             return Flux.error(e);
         }
 
+        log.info("room " + roomID + ": " + playerName + " wait for next turn");
         return Flux.create(sink -> {
                     context.addApplicationListener((ApplicationListener<PickFirstCardEvent>) event -> {
                         if (roomID.equals(event.getSource())) {
@@ -153,6 +162,8 @@ public class GameDataFetcher {
                                     .setGamePlayerInfo(gameService.getGamePlayerInfos(roomID))
                                     .setLastCard(event.getFirstCard())
                             );
+
+                            log.debug("room " + roomID + ": event-PickFirstCardEvent-gameWaitNextReaction");
                         }
                     });
 
@@ -171,14 +182,15 @@ public class GameDataFetcher {
                                 feedback.setSuccess(false)
                                         .setMessage("卡牌颜色或图案不同");
                             else {
-                                switch (event.getSendCard().getCardType()) {
+                                switch (event.getSendCard().cardType()) {
                                     case SKIP -> gamePlayerActions.add(new GamePlayerAction(gameService.getNextPlayerName(roomID), EnumGameAction.skipTurn)); // 额外移动一次下标即代表跳过回合
                                     case ADD2 -> gamePlayerActions.add(new GamePlayerAction(gameService.getNextPlayerName(roomID), EnumGameAction.skipTurn)); // 抽牌动作已由抽牌方法发布事件完成
                                     case ADD4 -> gamePlayerActions.add(new GamePlayerAction(gameService.getNextPlayerName(roomID), EnumGameAction.skipTurn));
                                 }
                             }
-
                             sink.next(feedback);
+
+                            log.debug("room " + roomID + ": event-SendCardEvent-gameWaitNextReaction");
                         }
                     });
 
@@ -191,6 +203,8 @@ public class GameDataFetcher {
                                     .setGamePlayerInfo(gameService.getGamePlayerInfos(roomID))
                                     .setLastCard(gameService.getPreviousCard(roomID))
                             );
+
+                            log.debug("room " + roomID + ": event-DrawCardEvent-gameWaitNextReaction");
                         }
                     });
 
@@ -198,6 +212,7 @@ public class GameDataFetcher {
                     context.addApplicationListener((ApplicationListener<GameInterruptionEvent>) event -> {
                         if (roomID.equals(event.getSource())) { // 忽略其他信号
                             sink.error(new GameAbnormalException("游戏中止"));
+                            log.debug("room " + roomID + ": event-GameInterruptionEvent-gameWaitNextReaction");
                         }
                     });
 
@@ -205,6 +220,7 @@ public class GameDataFetcher {
                     context.addApplicationListener((ApplicationListener<GameOverEvent>) event -> {
                         if (roomID.equals(event.getSource())) { // 忽略其他信号
                             sink.complete();
+                            log.debug("room " + roomID + ": event-GameOverEvent-gameWaitNextReaction");
                         }
                     });
                 }
@@ -225,6 +241,7 @@ public class GameDataFetcher {
             return Mono.error(e);
         }
 
+        log.info("room " + roomID + ": " + playerName + " subscribe game rank");
         return Mono.create(sink -> {
             // 监听到游戏结束, 返回排名
             context.addApplicationListener((ApplicationListener<GameOverEvent>) event -> {
@@ -232,6 +249,7 @@ public class GameDataFetcher {
                     List<GamePlayerState> rank = gameService.calcGameRank(roomID);
                     roomService.saveRankInfo(roomID, rank);
                     sink.success(rank);
+                    log.debug("room " + roomID + ": event-GameOverEvent-gameRanking");
                 }
             });
 
@@ -239,6 +257,7 @@ public class GameDataFetcher {
             context.addApplicationListener((ApplicationListener<GameInterruptionEvent>) event -> {
                 if (roomID.equals(event.getSource())) { // 忽略其他信号
                     sink.error(new GameAbnormalException("游戏中止"));
+                    log.debug("room " + roomID + ": event-GameInterruptionEvent-gameRanking");
                 }
             });
         });
