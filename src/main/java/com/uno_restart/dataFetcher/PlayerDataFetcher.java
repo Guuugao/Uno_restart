@@ -14,7 +14,6 @@ import com.uno_restart.types.player.PlayerInfo;
 import com.uno_restart.types.player.PlayerInfoFeedback;
 import graphql.relay.*;
 import graphql.schema.DataFetchingEnvironment;
-import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;

@@ -2,11 +2,10 @@ package com.uno_restart.types.game;
 
 import com.uno_restart.types.enums.EnumUnoCardColor;
 import com.uno_restart.types.enums.EnumUnoCardType;
-import lombok.AllArgsConstructor;
-import lombok.Data;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.*;
+import java.util.Map;
+import java.util.TreeMap;
 
 public record GameCard(@NotNull EnumUnoCardType cardType, @NotNull EnumUnoCardColor cardColor,
                        int cardID) implements Comparable<GameCard> {
