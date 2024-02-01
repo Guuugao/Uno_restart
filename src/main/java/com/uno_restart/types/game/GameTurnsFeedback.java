@@ -1,10 +1,7 @@
 package com.uno_restart.types.game;
 
-import com.uno_restart.types.enums.EnumGamePlayerStatus;
 import lombok.AllArgsConstructor;
-import lombok.Data;
 import lombok.RequiredArgsConstructor;
-import lombok.experimental.Accessors;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Collection;
