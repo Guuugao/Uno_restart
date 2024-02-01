@@ -97,7 +97,7 @@ public class RoomService {
                 playerState.getPlayer().getPlayerName().equals(playerName));
 
         // 若房间没人则关闭房间
-        if (room.getCurrentPlayerCount() == 0) {
+        if (room.getCurPlayerCnt() == 0) {
             rooms.remove(roomID);
             publicRooms.remove(roomID);
             publicRooms.remove(roomID);
@@ -121,8 +121,7 @@ public class RoomService {
                 else room.subReadyPlayerCnt();
 
                 // 若玩家全部准备并且玩家数量大于最小玩家数量, 则开始
-                if (isPlayerCntOK(room.getCurrentPlayerCount()) &&
-                        room.getCurrentPlayerCount() == room.getReadyPlayerCnt()) {
+                if (isPlayerCntOK(room.getCurPlayerCnt()) && isAllPlayerReady(room)) {
                     LinkedList<PlayerInfo> players = room.getJoinedPlayer().stream()
                             .map(RoomPlayerState::getPlayer)
                             .collect(Collectors.toCollection(LinkedList::new));
@@ -187,7 +186,7 @@ public class RoomService {
     }
 
     public void checkRoomFull(String roomID) throws RoomAbnormalException {
-        if (rooms.get(roomID).getCurrentPlayerCount().equals(rooms.get(roomID).getMaxPlayerCount()))
+        if (rooms.get(roomID).getCurPlayerCnt().equals(rooms.get(roomID).getMaxPlayerCount()))
             throw new RoomAbnormalException("房间已满");
     }
 
@@ -203,8 +202,12 @@ public class RoomService {
     }
 
 
-    public boolean isPlayerCntOK(Integer playerCount) {
-        return playerCount >= minPlayerCnt && playerCount <= maxPlayerCnt;
+    public boolean isPlayerCntOK(Integer curPlayerCnt) {
+        return curPlayerCnt >= minPlayerCnt && curPlayerCnt <= maxPlayerCnt;
+    }
+
+    public boolean isAllPlayerReady(RoomInfo room) {
+        return room.getCurPlayerCnt() == room.getReadyPlayerCnt().get();
     }
 
     public boolean isRoomNameOK(String roomName) {

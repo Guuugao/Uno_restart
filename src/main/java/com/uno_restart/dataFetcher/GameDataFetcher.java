@@ -15,6 +15,7 @@ import com.uno_restart.types.game.GameCard;
 import com.uno_restart.types.game.GamePlayerAction;
 import com.uno_restart.types.game.GamePlayerState;
 import com.uno_restart.types.game.GameTurnsFeedback;
+import com.uno_restart.types.player.PlayerInfoFeedback;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationListener;
@@ -37,7 +38,7 @@ public class GameDataFetcher {
     private ConfigurableApplicationContext context;
 
     @DgsMutation
-    Boolean pickFirstCard(String roomID) throws
+    public Boolean pickFirstCard(String roomID) throws
             RoomAbnormalException, PlayerAbnormalException,
             GameAbnormalException {
         StpUtil.checkLogin();
@@ -47,9 +48,10 @@ public class GameDataFetcher {
         gameService.checkTurn(roomID, playerName);
 
         gameService.pickFirstCard(roomID);
+
         log.info("room " + roomID + ": " + playerName + " picked first card");
 
-        return true;
+        return Boolean.TRUE;
     }
 
     @DgsMutation
@@ -156,6 +158,8 @@ public class GameDataFetcher {
         return Flux.create(sink -> {
                     context.addApplicationListener((ApplicationListener<PickFirstCardEvent>) event -> {
                         if (roomID.equals(event.getSource())) {
+                            // TODO 标记
+                            log.info("gameWaitNextReaction-159");
                             sink.next(new GameTurnsFeedback(
                                             gameService.getPlayerStates(roomID),
                                             gameService.getGamePlayerInfo(roomID, playerName.toString()),

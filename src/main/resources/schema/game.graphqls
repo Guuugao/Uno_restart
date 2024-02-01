@@ -11,8 +11,8 @@ enum EnumGameDirection {
 }
 
 enum EnumGameAction {
-    # 玩家行动: 抽牌, 出牌, 跳过 可以根据行动更新界面
-    drawCard, sendCard, skipTurn
+    # 玩家行动: 抽牌, 出牌, 跳过, 展示第一张牌 可以根据行动更新界面
+    drawCard, sendCard, skipTurn, showFirstCard
 }
 
 enum EnumGamePlayerStatus {

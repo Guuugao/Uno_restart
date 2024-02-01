@@ -8,6 +8,7 @@ import org.jetbrains.annotations.NotNull;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -28,30 +29,29 @@ public class RoomInfo {
     @NotNull
     private Integer maxPlayerCount;
     @NotNull
-    private Integer currentPlayerCount;
+    private Integer curPlayerCnt;
     @NotNull
     private List<RoomPlayerState> joinedPlayer;
 
     // 记录已准备玩家数量
-    // TODO 改成计数器
-    private int readyPlayerCnt;
+    private AtomicInteger readyPlayerCnt;
 
     // 当前玩家数量加/减
     public void addCurPlayerCnt() {
-        this.currentPlayerCount += 1;
+        this.curPlayerCnt += 1;
     }
 
     public void subCurPlayerCnt() {
-        this.currentPlayerCount -= 1;
+        this.curPlayerCnt -= 1;
     }
 
     // 当前已准备玩家数量加/减
     public void addReadyPlayerCnt() {
-        this.readyPlayerCnt += 1;
+        this.readyPlayerCnt.incrementAndGet();
     }
 
     public void subReadyPlayerCnt() {
-        this.readyPlayerCnt -= 1;
+        this.readyPlayerCnt.incrementAndGet();
     }
 
     public Map<String, PlayerInfo> getPlayerInfos() {
@@ -67,7 +67,7 @@ public class RoomInfo {
         this.isPlaying = false;
         this.isPrivate = isPrivate;
         this.maxPlayerCount = maxPlayerCount;
-        this.currentPlayerCount = 0;
+        this.curPlayerCnt = 0;
         this.joinedPlayer = new LinkedList<>();
 
         if (password == null || password.isEmpty()) {
@@ -77,6 +77,6 @@ public class RoomInfo {
             this.password = password;
         }
 
-        this.readyPlayerCnt = 0;
+        this.readyPlayerCnt = new AtomicInteger(0);
     }
 }
