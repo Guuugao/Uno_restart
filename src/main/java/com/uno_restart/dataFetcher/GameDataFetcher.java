@@ -86,8 +86,8 @@ public class GameDataFetcher {
         gameService.checkHasCardToSend(roomID, playerName);
 
         // 没有牌可以出时摸一张牌
-        LinkedList<GameCard> card = gameService.drawCard(roomID,  playerName, 1);
-        if (gameService.isCardLegal(roomID, card.getFirst())){
+        LinkedList<GameCard> card = gameService.drawCard(roomID, playerName, 1);
+        if (gameService.isCardLegal(roomID, card.getFirst())) {
             gameService.sendACard(roomID, playerName, card.getFirst()); // 若可以打出则立即打出
             log.info("room " + roomID + ": " + playerName + " draw card and immediately send");
         } else {
@@ -139,6 +139,7 @@ public class GameDataFetcher {
     // TODO 游戏开始后, 在玩家订阅之前, 游戏初始化就已经完成, 导致监听器无法向前端反馈初始化过程, 可以改为监听器, 监听到玩家订阅后再初始化房间
     @DgsSubscription
     public Flux<GameTurnsFeedback> gameWaitNextReaction(String roomID, String token) {
+        token = token.replaceFirst("saToken=", "");
         Object playerName = StpUtil.getLoginIdByToken(token);
         if (playerName == null) {
             return Flux.error(new PlayerAbnormalException("未能读取到有效 token"));
@@ -183,9 +184,12 @@ public class GameDataFetcher {
                                         .setMessage("卡牌颜色或图案不同");
                             else {
                                 switch (event.getSendCard().cardType()) {
-                                    case SKIP -> gamePlayerActions.add(new GamePlayerAction(gameService.getNextPlayerName(roomID), EnumGameAction.skipTurn)); // 额外移动一次下标即代表跳过回合
-                                    case ADD2 -> gamePlayerActions.add(new GamePlayerAction(gameService.getNextPlayerName(roomID), EnumGameAction.skipTurn)); // 抽牌动作已由抽牌方法发布事件完成
-                                    case ADD4 -> gamePlayerActions.add(new GamePlayerAction(gameService.getNextPlayerName(roomID), EnumGameAction.skipTurn));
+                                    case SKIP ->
+                                            gamePlayerActions.add(new GamePlayerAction(gameService.getNextPlayerName(roomID), EnumGameAction.skipTurn)); // 额外移动一次下标即代表跳过回合
+                                    case ADD2 ->
+                                            gamePlayerActions.add(new GamePlayerAction(gameService.getNextPlayerName(roomID), EnumGameAction.skipTurn)); // 抽牌动作已由抽牌方法发布事件完成
+                                    case ADD4 ->
+                                            gamePlayerActions.add(new GamePlayerAction(gameService.getNextPlayerName(roomID), EnumGameAction.skipTurn));
                                 }
                             }
                             sink.next(feedback);
@@ -223,12 +227,16 @@ public class GameDataFetcher {
                             log.debug("room " + roomID + ": event-GameOverEvent-gameWaitNextReaction");
                         }
                     });
+
+                    // 标记一名玩家已经连接至游戏
+                    gameService.countDown(roomID);
                 }
         );
     }
 
     @DgsSubscription
     public Mono<List<GamePlayerState>> gameRanking(String roomID, String token) {
+        token = token.replaceFirst("saToken=", "");
         Object playerName = StpUtil.getLoginIdByToken(token);
         if (playerName == null) {
             return Mono.error(new PlayerAbnormalException("未能读取到有效 token"));

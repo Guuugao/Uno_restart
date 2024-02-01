@@ -8,15 +8,12 @@ spring:
     password: root
     type: com.alibaba.druid.pool.DruidDataSource
 
+
 mybatis-plus:
   configuration:
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
     map-underscore-to-camel-case: false # 关闭字段名称自动驼峰转下划线
     jdbc-type-for-null: 'null'
-
-logging:
-  level:
-    root = DEBUG:
 
 dgs:
   graphql:
@@ -46,3 +43,6 @@ global-setting:
   #允许的头像类型
   allowed-avatar-types: image/jpeg, image/png, image/gif
 
+logging:
+  level:
+    root: info

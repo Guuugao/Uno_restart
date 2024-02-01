@@ -9,14 +9,12 @@ import com.uno_restart.event.GameStartEvent;
 import com.uno_restart.event.RoomCloseEvent;
 import com.uno_restart.exception.PlayerAbnormalException;
 import com.uno_restart.exception.RoomAbnormalException;
-import com.uno_restart.service.GameService;
 import com.uno_restart.service.PlayerService;
 import com.uno_restart.service.RoomService;
 import com.uno_restart.types.game.GameSettings;
 import com.uno_restart.types.player.PlayerInfo;
 import com.uno_restart.types.room.RoomFeedback;
 import com.uno_restart.types.room.RoomInfo;
-import com.uno_restart.types.room.RoomPlayerState;
 import graphql.relay.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,7 +25,6 @@ import reactor.core.publisher.Mono;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Base64;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -40,8 +37,6 @@ public class RoomDataFetcher {
     private PlayerService playerService;
     @Autowired
     private RoomService roomService;
-    @Autowired
-    private GameService gameService;
     @Autowired
     private Base64.Encoder encoder;
     @Autowired
@@ -224,7 +219,6 @@ public class RoomDataFetcher {
 
         StpUtil.checkLogin();
         roomService.checkRoomExists(roomID);
-        roomService.checkPlayerInRoom(roomID, StpUtil.getLoginIdAsString());
         roomService.checkRoomFull(roomID);
         roomService.checkIsPlaying(roomID);
 
@@ -307,7 +301,7 @@ public class RoomDataFetcher {
 
     @DgsSubscription
     public Mono<GameSettings> roomWaitStart(String roomID, String token) {
-
+        token = token.replaceFirst("saToken=", "");
         Object playerName = StpUtil.getLoginIdByToken(token);
         if (playerName == null) {
             return Mono.error(new PlayerAbnormalException("未能读取到有效 token"));
@@ -322,19 +316,12 @@ public class RoomDataFetcher {
             return Mono.error(e);
         }
 
-        log.info("room " + roomID + ": " + "subscribe wait for start");
+        log.info("room " + roomID + ": " + playerName + " subscribe wait for start");
         return Mono.create(sink -> {
             // 监听游戏开始事件
             context.addApplicationListener((ApplicationListener<GameStartEvent>) event -> {
                 if (roomID.equals(event.getSource())) { // 忽略其他房间的信号
-                    RoomInfo room = roomService.getRoom(event.getSource().toString());
-                    LinkedList<PlayerInfo> players = room.getJoinedPlayer().stream()
-                            .map(RoomPlayerState::getPlayer)
-                            .collect(Collectors.toCollection(LinkedList::new));
-                    GameSettings gameSettings = new GameSettings(players, room);
-                    room.setIsPlaying(true);
-                    sink.success(gameSettings); // 通知客户端游戏开始
-                    gameService.gameInit(gameSettings); // 初始化游戏必要信息
+                    sink.success(event.getSettings()); // 通知客户端游戏开始
 
                     log.debug("room " + roomID + ": event-GameStartEvent-roomWaitStart");
                 }

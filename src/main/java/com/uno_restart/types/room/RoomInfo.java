@@ -35,13 +35,22 @@ public class RoomInfo {
     // 记录已准备玩家数量
     private int readyPlayerCnt;
 
-    // 当前玩家数量加/减指定值
-    public void setCurrentPlayerCount(int diff) {
-        this.currentPlayerCount += diff;
+    // 当前玩家数量加/减
+    public void addCurPlayerCnt() {
+        this.currentPlayerCount += 1;
     }
-    // 已准备玩家数量加/减指定值
-    public void setReadyPlayerCnt(int diff) {
-        this.readyPlayerCnt += diff;
+
+    public void subCurPlayerCnt() {
+        this.currentPlayerCount -= 1;
+    }
+
+    // 当前已准备玩家数量加/减
+    public void addReadyPlayerCnt() {
+        this.readyPlayerCnt += 1;
+    }
+
+    public void subReadyPlayerCnt() {
+        this.readyPlayerCnt -= 1;
     }
 
     public Map<String, PlayerInfo> getPlayerInfos() {

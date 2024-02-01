@@ -1,17 +1,16 @@
 package com.uno_restart.service;
 
-import com.uno_restart.event.DrawCardEvent;
-import com.uno_restart.event.GameOverEvent;
-import com.uno_restart.event.PickFirstCardEvent;
-import com.uno_restart.event.SendCardEvent;
+import com.uno_restart.event.*;
 import com.uno_restart.exception.GameAbnormalException;
 import com.uno_restart.types.enums.EnumGameDirection;
 import com.uno_restart.types.enums.EnumGamePlayerStatus;
 import com.uno_restart.types.enums.EnumUnoCardType;
 import com.uno_restart.types.game.*;
 import lombok.extern.slf4j.Slf4j;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
@@ -28,12 +27,18 @@ public class GameService {
     ApplicationEventPublisher eventPublisher;
 
 
-    // 创建游戏, 初始化牌堆, 确定出牌次序
-    public void gameInit(GameSettings settings) {
+    // 创建一局游戏, 并添加至games管理
+    public void createGame(GameSettings settings) throws InterruptedException {
         Game game = new Game(settings);
         String roomID = settings.getRoomInfo().getRoomID();
         games.put(roomID, game);
+        gameInit(roomID);
+    }
 
+    // 创建游戏, 初始化牌堆, 确定出牌次序
+    private void gameInit(String roomID) throws InterruptedException {
+        Game game = games.get(roomID);
+        game.getPlayerConnectLatch().await(); // 将会阻塞, 等待所有玩家加入后执行
         int currentPlayerIndex = game.getCurPlayerIndex();
         List<GamePlayerState> playerList = game.getPlayerList();
         for (int i = 0; i < playerList.size(); ++i) {
@@ -259,6 +264,10 @@ public class GameService {
 
     public boolean didYouSayUno(String roomID, String who) {
         return games.get(roomID).getGamePlayerState(who).getSayUno();
+    }
+
+    public void countDown(String roomID){
+        games.get(roomID).getPlayerConnectLatch().countDown();
     }
 
     public GameService() {

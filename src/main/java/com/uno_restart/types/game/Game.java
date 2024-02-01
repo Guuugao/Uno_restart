@@ -7,6 +7,8 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.util.*;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 // 代表一局游戏
@@ -26,10 +28,8 @@ public class Game {
     private EnumGameDirection gameDirection;
     // 记录当前出牌玩家下标, 配合gameDirection与playerList, 即可推断玩家状态
     private int curPlayerIndex;
-
     // 玩家名称链表, 配合currentPlayerIndex以及gameDirection
     private List<GamePlayerState> playerList;
-
     // 记录玩家手牌
     // key: playerName, value: 手牌
     private Map<String, GamePlayerInfo> gamePlayers;
@@ -38,9 +38,10 @@ public class Game {
     // 弃牌堆
     private LinkedList<GameCard> discardPile;
     // 上一张牌
-    //   万能牌颜色初始为BLANK, 游戏中玩家可以为WILD与ADD4牌指定颜色
-    //   若上一张牌为万能牌, 则深拷贝一张卡牌后修改牌色
     private GameCard previousCard;
+
+    // 记录是否所有玩家已订阅'gameWaitNextReaction'
+    private CountDownLatch playerConnectLatch;
 
     public Game(GameSettings settings) {
         int playerCnt = settings.getPlayers().size();
@@ -62,6 +63,8 @@ public class Game {
         // 确定当前回合与下回合出牌玩家
         setGamePlayerStateByIndex(curPlayerIndex, EnumGamePlayerStatus.onTurns);
         setGamePlayerStateByIndex(getNextPlayerIndex(), EnumGamePlayerStatus.nextTurns);
+
+        playerConnectLatch = new CountDownLatch(playerCnt);
     }
 
     // 获取指定玩家游戏信息

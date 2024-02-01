@@ -6,6 +6,7 @@ import com.uno_restart.event.RoomCloseEvent;
 import com.uno_restart.exception.PlayerAbnormalException;
 import com.uno_restart.exception.RoomAbnormalException;
 import com.uno_restart.types.game.GamePlayerState;
+import com.uno_restart.types.game.GameSettings;
 import com.uno_restart.types.player.PlayerInfo;
 import com.uno_restart.types.room.RoomInfo;
 import com.uno_restart.types.room.RoomPlayerState;
@@ -16,10 +17,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 
 
 @Slf4j
@@ -48,6 +47,8 @@ public class RoomService {
     ApplicationEventPublisher eventPublisher;
     @Autowired
     PlayerService playerService;
+    @Autowired
+    GameService gameService;
 
     public RoomInfo createRoom(String roomName, Boolean isPrivate,
                                Integer maxPlayerCount, String password, String playerName) {
@@ -69,10 +70,10 @@ public class RoomService {
 
         // 若需要密码且密码错误, 则返回
         if (room.getRequirePassword() && !room.getPassword().equals(password)) {
-                return false;
+            return false;
         }
 
-        room.setCurrentPlayerCount(1);
+        room.addCurPlayerCnt();
         room.getJoinedPlayer().add(new RoomPlayerState(false, player));
         playerRooms.put(player.getPlayerName(), roomID);
 
@@ -80,10 +81,10 @@ public class RoomService {
     }
 
     public void quit(String playerName) {
-        String roomID = playerRooms.get(playerName);
         // 若玩家未加入房间, 则不处理
-        if (roomID.isEmpty()) return; // 加入房间和创建房间也需要先退出, 所以需要检查一遍是否加入房间
+        if (!playerRooms.containsKey(playerName)) return; // 加入房间和创建房间也需要先退出, 所以需要检查一遍是否加入房间
 
+        String roomID = playerRooms.get(playerName);
         if (isRoomPlaying(roomID)) {
             eventPublisher.publishEvent(new GameInterruptionEvent(roomID));
         }
@@ -91,7 +92,7 @@ public class RoomService {
         playerRooms.remove(playerName);
         RoomInfo room = rooms.get(roomID);
         // 将玩家从指定房间踢出
-        room.setCurrentPlayerCount(-1);
+        room.subCurPlayerCnt();
         room.getJoinedPlayer().removeIf(playerState ->
                 playerState.getPlayer().getPlayerName().equals(playerName));
 
@@ -106,24 +107,42 @@ public class RoomService {
         }
     }
 
-    public void ready(String roomID, String playerName, boolean isReady){
+    public void ready(String roomID, String playerName, boolean isReady) {
         RoomInfo room = rooms.get(roomID);
         Optional<RoomPlayerState> first = room.getJoinedPlayer().stream()
                 .filter(playerState -> playerState.getPlayer().getPlayerName().equals(playerName))
                 .findFirst();
         first.ifPresent(roomPlayerState -> {
-            roomPlayerState.setIsReady(isReady);
-            room.setReadyPlayerCnt(isReady ? 1 : -1); // 根据玩家是否准备, 修改已准备玩家数量
+            // 若登录状态未改变, 不做修改
+            if (roomPlayerState.getIsReady() != isReady) {
+                roomPlayerState.setIsReady(isReady);
+                // 根据玩家是否准备, 修改已准备玩家数量
+                if (isReady) room.addReadyPlayerCnt();
+                else room.subReadyPlayerCnt();
 
-            // 若玩家全部准备并且玩家数量大于最小玩家数量, 则开始
-            if (isPlayerCntOK(room.getCurrentPlayerCount()) &&
-                    room.getCurrentPlayerCount() == room.getReadyPlayerCnt()) {
-                eventPublisher.publishEvent(new GameStartEvent(roomID));
+                // 若玩家全部准备并且玩家数量大于最小玩家数量, 则开始
+                if (isPlayerCntOK(room.getCurrentPlayerCount()) &&
+                        room.getCurrentPlayerCount() == room.getReadyPlayerCnt()) {
+                    LinkedList<PlayerInfo> players = room.getJoinedPlayer().stream()
+                            .map(RoomPlayerState::getPlayer)
+                            .collect(Collectors.toCollection(LinkedList::new));
+                    GameSettings settings = new GameSettings(players, room);
+                    room.setIsPlaying(true);
+                    eventPublisher.publishEvent(new GameStartEvent(roomID, settings));
+
+                    try {
+                        gameService.createGame(settings); // 创建游戏
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
+
+                    log.debug("room " + roomID + ": create game");
+                }
             }
         });
     }
 
-    public RoomPlayerState getPlayerState(String playerName){
+    public RoomPlayerState getPlayerState(String playerName) {
         return rooms.get(playerRooms.get(playerName)).getJoinedPlayer().stream()
                 .filter(playerState -> playerState.getPlayer().getPlayerName().equals(playerName))
                 .findFirst()
@@ -131,7 +150,7 @@ public class RoomService {
     }
 
 
-    public RoomInfo getRoom(String roomID){
+    public RoomInfo getRoom(String roomID) {
         return rooms.get(roomID);
     }
 
@@ -140,7 +159,7 @@ public class RoomService {
     }
 
     // 根据排名更新玩家数据, 参数需要有序
-    public void saveRankInfo(String roomID, List<GamePlayerState> rank){
+    public void saveRankInfo(String roomID, List<GamePlayerState> rank) {
         Map<String, PlayerInfo> players = rooms.get(roomID).getPlayerInfos();
         players.get(rank.get(0).getPlayerName()).addWinTimes();
         for (int i = 1; i < rank.size(); i++) {
@@ -151,13 +170,13 @@ public class RoomService {
 
     // 检查房间是否存在
     public void checkRoomExists(String roomID) throws RoomAbnormalException {
-        if (!rooms.containsKey(roomID)) 
+        if (!rooms.containsKey(roomID))
             throw new RoomAbnormalException("房间不存在");
     }
 
     // 检查玩家是否加入指定房间
     public void checkPlayerInRoom(String roomID, String playerName) throws PlayerAbnormalException {
-        if (!playerRooms.get(playerName).equals(roomID)) 
+        if (playerRooms.containsKey(playerName) && !playerRooms.get(playerName).equals(roomID))
             throw new PlayerAbnormalException("玩家未加入房间 " + roomID);
     }
 
