@@ -214,7 +214,7 @@ public class RoomDataFetcher {
 
     @DgsMutation
     public RoomFeedback roomJoin(String roomID, String password)
-            throws RoomAbnormalException, PlayerAbnormalException {
+            throws RoomAbnormalException {
         RoomFeedback feedback = new RoomFeedback(false, false);
 
         StpUtil.checkLogin();

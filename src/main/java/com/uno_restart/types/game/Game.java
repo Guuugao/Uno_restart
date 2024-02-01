@@ -8,7 +8,6 @@ import lombok.Setter;
 
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 // 代表一局游戏
