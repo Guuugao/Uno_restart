@@ -44,7 +44,6 @@ input GameCardInput {
 
 type GamePlayerInfo {
     who: PlayerInfo!
-    remainingCardCnt: Int!
     cards: [GameCard]!
 }
 
@@ -56,24 +55,26 @@ type GamePlayerAction {
 }
 
 type GameTurnsFeedback {
-    yourStatus: EnumGamePlayerStatus!
-    othersStatus: [GamePlayerState!]!
-    gamePlayerInfo: [GamePlayerInfo]
+    # 所有玩家的状态(包括自己)
+    playerStatus: [GamePlayerState!]!
+    # 自己的手牌详细信息
+    yourGameInfo: GamePlayerInfo!
+    # 上一张打出的牌
     lastCard: GameCard
+    # 玩家行动(抽牌, 跳过, 出牌)
     playerActions: [GamePlayerAction!]!
-
-    success: Boolean!
-    message: String
 }
 
 # 游戏内玩家状态
 type GamePlayerState {
     playerName: String!
-    status: EnumGamePlayerStatus!
+    state: EnumGamePlayerStatus!
     # 游戏分数, 首先打完手牌为赢家, 其余玩家按照手牌分数总合倒序排名, 数字牌按牌面计算, 功能牌20, 万能牌50
     totalScore: Int!
     # 是否说Uno
     sayUno: Boolean!
+    # 剩余卡牌数量
+    remainingCardCnt: Int!
 }
 
 type GameSettings {

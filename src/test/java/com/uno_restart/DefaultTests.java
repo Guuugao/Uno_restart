@@ -5,6 +5,10 @@ import org.springframework.boot.test.context.SpringBootTest;
 import reactor.core.publisher.Flux;
 
 import java.time.Duration;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
 
 
@@ -25,9 +29,14 @@ class DefaultTests {
 
     @Test
     public void foo() {
-        String str = "saToken=0557540d-1859-4960-a0cb-2de6de432a0c";
-        String remove = str.replaceFirst("saToken=", "");
-        System.out.println(str);
-        System.out.println(remove);
+        Map<Integer, String> map = new TreeMap<>();
+        Collection<String> values = map.values();
+        map.put(1, "a");
+        map.put(2, "b");
+        map.put(3, "c");
+        map.put(4, "da");
+        map.put(5, "db");
+        System.out.println("map: " + map);
+        System.out.println("values: " + values);
     }
 }

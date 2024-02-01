@@ -33,6 +33,7 @@ public class RoomInfo {
     private List<RoomPlayerState> joinedPlayer;
 
     // 记录已准备玩家数量
+    // TODO 改成计数器
     private int readyPlayerCnt;
 
     // 当前玩家数量加/减

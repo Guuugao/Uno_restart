@@ -1,9 +1,6 @@
 package com.uno_restart.service;
 
-import com.uno_restart.event.DrawCardEvent;
-import com.uno_restart.event.GameOverEvent;
-import com.uno_restart.event.PickFirstCardEvent;
-import com.uno_restart.event.SendCardEvent;
+import com.uno_restart.event.*;
 import com.uno_restart.exception.GameAbnormalException;
 import com.uno_restart.types.enums.EnumGameDirection;
 import com.uno_restart.types.enums.EnumGamePlayerStatus;
@@ -12,6 +9,8 @@ import com.uno_restart.types.game.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.event.EventListener;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
@@ -33,17 +32,22 @@ public class GameService {
         Game game = new Game(settings);
         String roomID = settings.getRoomInfo().getRoomID();
         games.put(roomID, game);
-        gameInit(roomID);
+    }
+
+    @EventListener(PlayerConnectEvent.class)
+    public void playerConnectEventHandler(PlayerConnectEvent event) {
+        Game game = games.get(event.getSource().toString());
+        game.playerConnect();
+        if (game.isAllPlayerConnect()) gameInit(event.getSource().toString());
     }
 
     // 创建游戏, 初始化牌堆, 确定出牌次序
-    private void gameInit(String roomID) throws InterruptedException {
+    private void gameInit(String roomID)  {
         Game game = games.get(roomID);
-        game.getPlayerConnectLatch().await(); // 将会阻塞, 等待所有玩家加入后执行
         int currentPlayerIndex = game.getCurPlayerIndex();
-        List<GamePlayerState> playerList = game.getPlayerList();
+        List<String> playerList = game.getPlayerList();
         for (int i = 0; i < playerList.size(); ++i) {
-            String playerName = playerList.get(currentPlayerIndex).getPlayerName();
+            String playerName = playerList.get(currentPlayerIndex);
             drawCard(roomID, playerName, Game.INITIAL_NUMBER_OF_CARDS);
 
             eventPublisher.publishEvent(new DrawCardEvent(roomID, playerName, Game.INITIAL_NUMBER_OF_CARDS));
@@ -56,7 +60,8 @@ public class GameService {
     // 抽取指定数量卡牌并添加至指定玩家手牌
     public LinkedList<GameCard> drawCard(String roomID, String playerName, int cnt) {
         Game game = games.get(roomID);
-        GamePlayerInfo gamePlayerInfo = game.getGamePlayers().get(playerName);
+        GamePlayerInfo gamePlayerInfo = game.getGamePlayerInfos().get(playerName);
+        GamePlayerState gamePlayerState = game.getGamePlayerState(playerName);
         LinkedList<GameCard> drawPile = game.getDrawPile(); // 抽牌堆
         LinkedList<GameCard> discardPile = game.getDiscardPile(); // 弃牌堆
         // 抽牌堆卡牌不足, 将弃牌堆重新洗入
@@ -75,9 +80,9 @@ public class GameService {
         gamePlayerInfo.getHandCards().putAll(drawCards.stream()
                 .collect(Collectors.toMap(GameCard::cardID, Function.identity())));
         // 修改手牌数量
-        gamePlayerInfo.setRemainingCardCnt(cnt);
+        gamePlayerState.setRemainingCardCnt(cnt);
 
-        log.trace("room " + roomID + ": " + playerName + " draw cards " + drawCards + ", number of remaining cards " + gamePlayerInfo.getRemainingCardCnt());
+        log.trace("room " + roomID + ": " + playerName + " draw cards " + drawCards + ", number of remaining cards " + gamePlayerState.getRemainingCardCnt());
 
         // 从抽牌堆移除元素
         while (cnt > 0) {
@@ -89,14 +94,12 @@ public class GameService {
     }
 
     // 打出一张牌
-    // 这里面识别牌的种类, 将牌移入弃牌堆后根据种类调用私有方法完成卡牌逻辑
     public void sendACard(String roomID, String playerName, GameCard card) {
         Game game = games.get(roomID);
         movieCardToDiscardPile(roomID, playerName, card); // 将牌移入弃牌堆
         game.setPreviousCard(card); // 记录当前卡牌作为下回合出牌依据
 
-        if (game.getGamePlayerInfo(playerName).getRemainingCardCnt() == 0) {
-
+        if (game.getGamePlayerState(playerName).haveNoCard()) {
             eventPublisher.publishEvent(new GameOverEvent(roomID));
         }
         eventPublisher.publishEvent(new SendCardEvent(roomID, card, playerName));
@@ -114,7 +117,6 @@ public class GameService {
             }
         }
         movieIndex(game);
-
 
         log.trace("room " + roomID + ": " + playerName + " send " + card);
     }
@@ -143,18 +145,13 @@ public class GameService {
     }
 
     // 获取所有玩家的游戏状态
-    public List<GamePlayerState> getPlayerList(String roomID) {
-        return games.get(roomID).getPlayerList();
+    public Collection<GamePlayerState> getPlayerStates(String roomID) {
+        return games.get(roomID).getGamePlayerStates().values();
     }
 
     // 获取指定玩家的游戏状态
     public EnumGamePlayerStatus getPlayerState(String roomID, String playerName) {
-        return games.get(roomID).getPlayerList()
-                .stream()
-                .filter(playerState -> playerState.getPlayerName().equals(playerName))
-                .findAny()
-                .get() // 一定可以找到值
-                .getStatus();
+        return games.get(roomID).getGamePlayerState(playerName).getState();
     }
 
     // 将牌移入弃牌堆
@@ -162,17 +159,14 @@ public class GameService {
         Game game = games.get(roomID);
         GamePlayerInfo gamePlayerInfo = game.getGamePlayerInfo(playerName);
         game.getDiscardPile().add(gamePlayerInfo.getHandCards().remove(card.cardID()));
-        gamePlayerInfo.setRemainingCardCnt(-1);
+        game.getGamePlayerState(playerName).setRemainingCardCnt(-1);
         log.trace("room " + roomID + ": " + playerName + "movie " + card + " to discard pile");
     }
 
     // 将"currentPlayerIndex"下标指向下一个玩家
     private void movieIndex(Game game) {
         game.setGamePlayerStateByIndex(game.getCurPlayerIndex(), EnumGamePlayerStatus.watching);
-        if (game.getGameDirection() == (EnumGameDirection.clockwise))
-            game.setCurPlayerIndex((game.getCurPlayerIndex() + 1) % game.getPlayerCnt());
-        else
-            game.setCurPlayerIndex((game.getCurPlayerIndex() - 1 + game.getPlayerCnt()) % game.getPlayerCnt());
+        game.moveIndex();
         game.setGamePlayerStateByIndex(game.getCurPlayerIndex(), EnumGamePlayerStatus.onTurns);
         game.setGamePlayerStateByIndex(game.getNextPlayerIndex(), EnumGamePlayerStatus.nextTurns);
         log.debug("room " + game.getRoomID() + ": current turn " + game.getCurPlayerName() + ", next turn " + game.getNextPlayerName());
@@ -206,13 +200,18 @@ public class GameService {
     // 当前出牌不符合规则, 设置当前出牌玩家状态为retryOnTurns
     public void reTry(String roomID) {
         GamePlayerState playerState = games.get(roomID).getCurGamePlayerState();
-        playerState.setStatus(EnumGamePlayerStatus.retryOnTurns);
+        playerState.setState(EnumGamePlayerStatus.retryOnTurns);
         eventPublisher.publishEvent(new SendCardEvent(roomID, null, playerState.getPlayerName()));
     }
 
     // 获取游戏玩家信息集合
     public Collection<GamePlayerInfo> getGamePlayerInfos(String roomID) {
-        return games.get(roomID).getGamePlayers().values();
+        return games.get(roomID).getGamePlayerInfos().values();
+    }
+
+    // 获取指定游戏玩家信息
+    public GamePlayerInfo getGamePlayerInfo(String roomID, String playerName) {
+        return games.get(roomID).getGamePlayerInfos().get(playerName);
     }
 
     // 获取指定游戏的上一张牌
@@ -237,9 +236,9 @@ public class GameService {
 
     // 计算游戏分数及排名
     public List<GamePlayerState> calcGameRank(String roomID) {
-        Map<String, GamePlayerInfo> gamePlayers = games.get(roomID).getGamePlayers();
-        List<GamePlayerState> playerList = games.get(roomID).getPlayerList();
-        return playerList.stream()
+        Map<String, GamePlayerInfo> gamePlayers = games.get(roomID).getGamePlayerInfos();
+        Collection<GamePlayerState> gamePlayerStates = games.get(roomID).getGamePlayerStates().values();
+        return gamePlayerStates.stream()
                 .peek(gamePlayerState -> gamePlayerState.setTotalScore(calcScore(gamePlayers.get(gamePlayerState.getPlayerName())))) // 计算每个玩家的分数总合
                 .sorted(Comparator.comparingInt(GamePlayerState::getTotalScore)).toList();
     }
@@ -265,10 +264,6 @@ public class GameService {
 
     public boolean didYouSayUno(String roomID, String who) {
         return games.get(roomID).getGamePlayerState(who).getSayUno();
-    }
-
-    public void countDown(String roomID){
-        games.get(roomID).getPlayerConnectLatch().countDown();
     }
 
     public GameService() {
