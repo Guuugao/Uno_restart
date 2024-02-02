@@ -2,7 +2,6 @@ package com.uno_restart.types.game;
 
 import com.uno_restart.types.enums.EnumGameDirection;
 import com.uno_restart.types.enums.EnumGamePlayerStatus;
-import com.uno_restart.types.enums.EnumUnoCardType;
 import com.uno_restart.types.player.PlayerInfo;
 import lombok.Getter;
 import lombok.Setter;

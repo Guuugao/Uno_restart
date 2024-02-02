@@ -1,6 +1,5 @@
 package com.uno_restart.event;
 
-import com.uno_restart.types.game.GameCard;
 import lombok.Getter;
 import org.springframework.context.ApplicationEvent;
 
