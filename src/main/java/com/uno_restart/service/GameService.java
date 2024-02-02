@@ -27,7 +27,7 @@ public class GameService {
 
 
     // 创建一局游戏, 并添加至games管理
-    public void createGame(GameSettings settings) throws InterruptedException {
+    public void createGame(GameSettings settings) {
         Game game = new Game(settings);
         String roomID = settings.getRoomInfo().getRoomID();
         games.put(roomID, game);
@@ -101,6 +101,7 @@ public class GameService {
         if (game.getGamePlayerState(playerName).haveNoCard()) {
             eventPublisher.publishEvent(new GameOverEvent(roomID));
         }
+        movieIndex(game); // TODO 修复: 玩家出牌后下回合反馈信息提示还是该玩家出牌
         eventPublisher.publishEvent(new SendCardEvent(roomID, card, playerName));
 
         switch (card.cardType()) {
@@ -115,7 +116,6 @@ public class GameService {
                 movieIndex(game);
             }
         }
-        movieIndex(game);
 
         log.trace("room " + roomID + ": " + playerName + " send " + card);
     }
@@ -132,7 +132,7 @@ public class GameService {
         GameCard firstCard = game.getDrawPile().removeFirst();
         game.getDiscardPile().add(firstCard);
         game.setPreviousCard(firstCard);
-        eventPublisher.publishEvent(new PickFirstCardEvent(roomID, game.getCurPlayerName(), firstCard));
+        eventPublisher.publishEvent(new PickFirstCardEvent(roomID, game.getCurPlayerName()));
 
         log.debug("room " + roomID + ": first card is " + firstCard);
     }
@@ -169,6 +169,12 @@ public class GameService {
         game.setGamePlayerStateByIndex(game.getCurPlayerIndex(), EnumGamePlayerStatus.onTurns);
         game.setGamePlayerStateByIndex(game.getNextPlayerIndex(), EnumGamePlayerStatus.nextTurns);
         log.debug("room " + game.getRoomID() + ": current turn " + game.getCurPlayerName() + ", next turn " + game.getNextPlayerName());
+    }
+
+    // 在未抽取第一张牌时抛出异常
+    public void checkPreCard(String roomID) throws GameAbnormalException {
+        if (games.get(roomID).getPreviousCard() == null)
+            throw new GameAbnormalException("请抽取第一张牌");
     }
 
     // 检查到卡牌不能打出后抛出异常
@@ -248,7 +254,7 @@ public class GameService {
     }
 
     // 在玩家还有牌可以打出时抛出异常
-    public void checkHasCardToSend(String roomID, String playerName) throws GameAbnormalException {
+    public void checkHaveCardToSend(String roomID, String playerName) throws GameAbnormalException {
         if (games.get(roomID).getGamePlayerInfo(playerName)
                 .getHandCards().values()
                 .stream().anyMatch(card -> isCardLegal(roomID, card)))
@@ -267,5 +273,12 @@ public class GameService {
 
     public GameService() {
         games = new HashMap<>();
+    }
+
+    // 在玩家手牌中不存在指定卡牌时抛出异常
+    public void checkHaveCard(String roomID, String playerName, Integer cardID)
+            throws GameAbnormalException {
+        if (!games.get(roomID).getGamePlayerInfo(playerName).getHandCards().containsKey(cardID))
+            throw new GameAbnormalException("卡牌不存在");
     }
 }

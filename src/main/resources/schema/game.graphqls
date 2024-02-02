@@ -36,10 +36,10 @@ type GameCard {
     cardID: Int!
 }
 
-# 实体类先用上面这个, 应该是一样的
 input GameCardInput {
     cardType: EnumUnoCardType!
     cardColor: EnumUnoCardColor!
+    cardID: Int!
 }
 
 type GamePlayerInfo {

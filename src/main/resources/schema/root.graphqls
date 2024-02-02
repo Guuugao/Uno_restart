@@ -37,7 +37,7 @@ type Mutation {
 
     # 游玩内容
     pickFirstCard(roomID: ID!): Boolean # 由庄家掀开抽牌堆第一张牌, 确定出牌规则
-    sendCard(roomID: ID!, card: GameCardInput!): Boolean # 出牌
+    sendCard(roomID: ID!, cardInput: GameCardInput!): Boolean # 出牌
     noCardToSend(roomID: ID!): Boolean # 无牌可出, 抽一张牌, 若可出则立刻打出
     sayUno(roomID: ID!): Boolean # 喊Uno
     whoForgetSayUno(roomID: ID!, playerName: String!): Boolean # 指出谁忘记喊Uno

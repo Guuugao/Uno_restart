@@ -121,19 +121,14 @@ public class RoomService {
                 else room.subReadyPlayerCnt();
 
                 // 若玩家全部准备并且玩家数量大于最小玩家数量, 则开始
-                if (isPlayerCntOK(room.getCurPlayerCnt()) && isAllPlayerReady(room)) {
+                if (isPlayerNumOK(room.getCurPlayerCnt()) && isAllPlayerReady(room)) {
                     LinkedList<PlayerInfo> players = room.getJoinedPlayer().stream()
                             .map(RoomPlayerState::getPlayer)
                             .collect(Collectors.toCollection(LinkedList::new));
                     GameSettings settings = new GameSettings(players, room);
                     room.setIsPlaying(true);
                     eventPublisher.publishEvent(new GameStartEvent(roomID, settings));
-
-                    try {
-                        gameService.createGame(settings); // 创建游戏
-                    } catch (InterruptedException e) {
-                        throw new RuntimeException(e);
-                    }
+                    gameService.createGame(settings); // 创建游戏
 
                     log.debug("room " + roomID + ": create game");
                 }
@@ -202,7 +197,7 @@ public class RoomService {
     }
 
 
-    public boolean isPlayerCntOK(Integer curPlayerCnt) {
+    public boolean isPlayerNumOK(Integer curPlayerCnt) {
         return curPlayerCnt >= minPlayerCnt && curPlayerCnt <= maxPlayerCnt;
     }
 

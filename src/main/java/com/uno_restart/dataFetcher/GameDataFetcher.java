@@ -11,11 +11,7 @@ import com.uno_restart.exception.RoomAbnormalException;
 import com.uno_restart.service.GameService;
 import com.uno_restart.service.RoomService;
 import com.uno_restart.types.enums.EnumGameAction;
-import com.uno_restart.types.game.GameCard;
-import com.uno_restart.types.game.GamePlayerAction;
-import com.uno_restart.types.game.GamePlayerState;
-import com.uno_restart.types.game.GameTurnsFeedback;
-import com.uno_restart.types.player.PlayerInfoFeedback;
+import com.uno_restart.types.game.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationListener;
@@ -26,6 +22,7 @@ import reactor.core.publisher.Mono;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @DgsComponent
@@ -55,7 +52,7 @@ public class GameDataFetcher {
     }
 
     @DgsMutation
-    public Boolean sendCard(String roomID, GameCard card) throws
+    public Boolean sendCard(String roomID, Map<Object, Object> cardInput) throws
             RoomAbnormalException, PlayerAbnormalException,
             GameAbnormalException {
         StpUtil.checkLogin();
@@ -63,15 +60,21 @@ public class GameDataFetcher {
         roomService.checkRoomExists(roomID);
         roomService.checkPlayerInRoom(roomID, playerName);
         gameService.checkTurn(roomID, playerName);
+        gameService.checkPreCard(roomID); // 检查是否已经完成抽取第一张牌操作
+        gameService.checkHaveCard(roomID, playerName, (Integer) cardInput.get("cardID")); // 检查手牌中是否有这张牌
+
+        GameCard card;
         try {
+            card = GameCard.getCardFromInput(cardInput);
             gameService.checkCard(roomID, card);
         } catch (GameAbnormalException e) {
             gameService.reTry(roomID);
-            log.info("room " + roomID + ": " + playerName + " retry the card");
+            log.info("room " + roomID + ": " + playerName + " retry the card, reason " + e.getMessage());
+            return false; // catch之后的代码依然会运行, 所以需要手动返回
         }
 
         gameService.sendACard(roomID, playerName, card);
-        log.info("room " + roomID + ": " + playerName + " send " + card);
+        log.info("room " + roomID + ": " + playerName + " send " + cardInput);
 
         return true;
     }
@@ -85,7 +88,7 @@ public class GameDataFetcher {
         roomService.checkRoomExists(roomID);
         roomService.checkPlayerInRoom(roomID, playerName);
         gameService.checkTurn(roomID, playerName);
-        gameService.checkHasCardToSend(roomID, playerName);
+        gameService.checkHaveCardToSend(roomID, playerName);
 
         // 没有牌可以出时摸一张牌
         LinkedList<GameCard> card = gameService.drawCard(roomID, playerName, 1);
@@ -140,7 +143,7 @@ public class GameDataFetcher {
 
     @DgsSubscription
     public Flux<GameTurnsFeedback> gameWaitNextReaction(String roomID, String token) {
-        token = token.replaceFirst("saToken=", "");
+        token = token.replaceFirst(StpUtil.getTokenName() + "=", "");
         Object playerName = StpUtil.getLoginIdByToken(token);
         if (playerName == null) {
             return Flux.error(new PlayerAbnormalException("未能读取到有效 token"));
@@ -158,12 +161,10 @@ public class GameDataFetcher {
         return Flux.create(sink -> {
                     context.addApplicationListener((ApplicationListener<PickFirstCardEvent>) event -> {
                         if (roomID.equals(event.getSource())) {
-                            // TODO 标记
-                            log.info("gameWaitNextReaction-159");
                             sink.next(new GameTurnsFeedback(
                                             gameService.getPlayerStates(roomID),
                                             gameService.getGamePlayerInfo(roomID, playerName.toString()),
-                                            event.getFirstCard(),
+                                            gameService.getPreviousCard(roomID),
                                             List.of(new GamePlayerAction(event.getPlayerName(), EnumGameAction.showFirstCard))
                                     )
                             );
@@ -176,13 +177,13 @@ public class GameDataFetcher {
                         if (roomID.equals(event.getSource())) {
                             ArrayList<GamePlayerAction> gamePlayerActions = new ArrayList<>();
                             gamePlayerActions.ensureCapacity(2); // 一张牌最多影响两名玩家, 出牌者与其下家
-                            gamePlayerActions.add(new GamePlayerAction(event.getPlayerName(), EnumGameAction.sendCard));
 
                             GameTurnsFeedback feedback = new GameTurnsFeedback(
                                     gameService.getPlayerStates(roomID),
                                     gameService.getGamePlayerInfo(roomID, playerName.toString()),
-                                    event.getSendCard(), gamePlayerActions);
-                            if (event.getSendCard() != null) {
+                                    gameService.getPreviousCard(roomID), gamePlayerActions);
+                            if (event.getSendCard() != null) { // 出牌失败返回null, 不做操作
+                                gamePlayerActions.add(new GamePlayerAction(event.getPlayerName(), EnumGameAction.sendCard));
                                 switch (event.getSendCard().cardType()) {
                                     case SKIP ->
                                             gamePlayerActions.add(new GamePlayerAction(gameService.getNextPlayerName(roomID), EnumGameAction.skipTurn)); // 额外移动一次下标即代表跳过回合
@@ -237,7 +238,7 @@ public class GameDataFetcher {
 
     @DgsSubscription
     public Mono<List<GamePlayerState>> gameRanking(String roomID, String token) {
-        token = token.replaceFirst("saToken=", "");
+        token = token.replaceFirst(StpUtil.getTokenName() + "=", "");
         Object playerName = StpUtil.getLoginIdByToken(token);
         if (playerName == null) {
             return Mono.error(new PlayerAbnormalException("未能读取到有效 token"));

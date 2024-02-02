@@ -7,10 +7,8 @@ import org.springframework.context.ApplicationEvent;
 @Getter
 public class PickFirstCardEvent extends ApplicationEvent {
     private final String playerName;
-    private final GameCard firstCard;
-    public PickFirstCardEvent(String roomID, String playerName, GameCard firstCard) {
+    public PickFirstCardEvent(String roomID, String playerName) {
         super(roomID);
         this.playerName = playerName;
-        this.firstCard = firstCard;
     }
 }

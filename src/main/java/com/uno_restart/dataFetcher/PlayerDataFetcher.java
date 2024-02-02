@@ -18,10 +18,7 @@ import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DuplicateKeyException;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.servlet.config.annotation.CorsRegistry;
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import java.io.File;
 import java.io.IOException;
@@ -86,8 +83,8 @@ public class PlayerDataFetcher {
                 .collect(Collectors.toList());
 
         // 没有数据, 则游标为空
-        ConnectionCursor startCursor = !edges.isEmpty() ? edges.get(0).getCursor() : new DefaultConnectionCursor("null");
-        ConnectionCursor endCursor = !edges.isEmpty() ? edges.get(edges.size() - 1).getCursor() : new DefaultConnectionCursor("null");
+        ConnectionCursor startCursor = edges.isEmpty() ? new DefaultConnectionCursor("null") : edges.get(0).getCursor();
+        ConnectionCursor endCursor = edges.isEmpty() ? new DefaultConnectionCursor("null"): edges.get(edges.size() - 1).getCursor();
 
         PageInfo pageInfo = new DefaultPageInfo(
                 startCursor,
@@ -187,6 +184,7 @@ public class PlayerDataFetcher {
 
         PlayerInfoFeedback feedback = new PlayerInfoFeedback(false);
         try {
+            roomService.quit(StpUtil.getLoginIdAsString()); // 若在游玩则退出
             playerService.modifyPlayerName(StpUtil.getLoginIdAsString(), newPlayerName);
             feedback.setSuccess(true)
                     .setMessage("用户名修改成功, 请重新登录");

@@ -3,9 +3,10 @@ package com.uno_restart;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
-// TODO 位于房间时修改playerName, 修改playerName应该会下线, 下线时退出游戏房间
 // TODO 添加Redis
-// TODO 使用次数少的辅助方法 整理合并一下
+// TODO 添加接口"specifyTheFirstCardColor", 在抽到的第一张卡为万能卡时, 庄家指定一种颜色, 然后游戏开始
+// TODO DGS错误处理详细使用方法
+// TODO 出牌时手上没有对应手牌怎么办
 @SpringBootApplication
 public class UnoRestartApplication {
     public static void main(String[] args) {

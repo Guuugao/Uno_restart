@@ -20,7 +20,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.ConfigurableApplicationContext;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import reactor.core.publisher.Mono;
 
 import java.nio.charset.StandardCharsets;
@@ -149,8 +148,8 @@ public class RoomDataFetcher {
                         .collect(Collectors.toList());
 
         // 没有数据, 则游标为空
-        ConnectionCursor startCursor = !edges.isEmpty() ? edges.get(0).getCursor() : new DefaultConnectionCursor("null");
-        ConnectionCursor endCursor = !edges.isEmpty() ? edges.get(edges.size() - 1).getCursor() : new DefaultConnectionCursor("null");
+        ConnectionCursor startCursor = edges.isEmpty() ? new DefaultConnectionCursor("null"): edges.get(0).getCursor();
+        ConnectionCursor endCursor = edges.isEmpty() ? new DefaultConnectionCursor("null") : edges.get(edges.size() - 1).getCursor();
 
         PageInfo pageInfo = new DefaultPageInfo(
                 startCursor,
@@ -190,7 +189,7 @@ public class RoomDataFetcher {
 
         RoomFeedback feedback = new RoomFeedback(false, false);
 
-        if (!roomService.isPlayerCntOK(maxPlayerCount) || !roomService.isRoomNameOK(roomName)) {
+        if (!roomService.isPlayerNumOK(maxPlayerCount) || !roomService.isRoomNameOK(roomName)) {
             feedback.setMessage("创建房间失败, 请检查房间设置");
         } else {
             String playerName = StpUtil.getLoginIdAsString();
@@ -302,7 +301,7 @@ public class RoomDataFetcher {
 
     @DgsSubscription
     public Mono<GameSettings> roomWaitStart(String roomID, String token) {
-        token = token.replaceFirst("saToken=", "");
+        token = token.replaceFirst(StpUtil.getTokenName() + "=", "");
         Object playerName = StpUtil.getLoginIdByToken(token);
         if (playerName == null) {
             return Mono.error(new PlayerAbnormalException("未能读取到有效 token"));

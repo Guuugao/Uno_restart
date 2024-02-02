@@ -1,14 +1,17 @@
 package com.uno_restart.types.game;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.uno_restart.exception.GameAbnormalException;
 import com.uno_restart.types.enums.EnumUnoCardColor;
 import com.uno_restart.types.enums.EnumUnoCardType;
 import org.jetbrains.annotations.NotNull;
-
 import java.util.Map;
 import java.util.TreeMap;
 
 public record GameCard(@NotNull EnumUnoCardType cardType, @NotNull EnumUnoCardColor cardColor,
-                       int cardID) implements Comparable<GameCard> {
+                       Integer cardID) implements Comparable<GameCard> {
+    public static ObjectMapper jsonParser = new ObjectMapper();
+
     public static Map<Integer, GameCard> generateDeck() {
         int cardID = 0;
         Map<Integer, GameCard> deck = new TreeMap<>();
@@ -56,6 +59,26 @@ public record GameCard(@NotNull EnumUnoCardType cardType, @NotNull EnumUnoCardCo
 
     public int getScore() {
         return cardType.getScore();
+    }
+
+    // 从GameCardInput类型获取GameCard类型
+    // 在卡牌非法时抛出异常
+    public static GameCard getCardFromInput(Map<Object, Object> cardInput)
+            throws GameAbnormalException {
+        // 打出的卡牌图案必须与牌组中对应卡牌一致, 若为万能牌, 则颜色可以不一致
+        // 如果为万能牌, 则创建一张新牌, 因为牌色需要改变
+        // 如果非万能牌, 则找到全局静态牌组, 根据卡牌id返回引用
+        GameCard card = Game.DECK.get((Integer)cardInput.get("cardID"));
+        // 使用valueOf转换, 可以顺便检查输入是否合理, 若枚举值不存在则抛出IllegalArgumentException
+        boolean isSameType = card.cardType() == EnumUnoCardType.valueOf(cardInput.get("cardType").toString());
+        boolean isSameColor = card.cardColor() == EnumUnoCardColor.valueOf(cardInput.get("cardColor").toString());
+        boolean isBlank = card.cardColor() == EnumUnoCardColor.BLANK;
+
+        if (isSameType && (isSameColor || isBlank)) {
+            return isBlank ? jsonParser.convertValue(cardInput, GameCard.class) : card;
+        } else {
+            throw new GameAbnormalException("非法卡牌");
+        }
     }
 }
 
