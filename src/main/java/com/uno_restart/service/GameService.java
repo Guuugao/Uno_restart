@@ -4,6 +4,7 @@ import com.uno_restart.event.*;
 import com.uno_restart.exception.GameAbnormalException;
 import com.uno_restart.types.enums.EnumGameDirection;
 import com.uno_restart.types.enums.EnumGamePlayerStatus;
+import com.uno_restart.types.enums.EnumUnoCardColor;
 import com.uno_restart.types.enums.EnumUnoCardType;
 import com.uno_restart.types.game.*;
 import lombok.extern.slf4j.Slf4j;
@@ -96,12 +97,12 @@ public class GameService {
     public void sendACard(String roomID, String playerName, GameCard card) {
         Game game = games.get(roomID);
         movieCardToDiscardPile(roomID, playerName, card); // 将牌移入弃牌堆
-        game.setPreviousCard(card); // 记录当前卡牌作为下回合出牌依据
+        game.setPreCard(card); // 记录当前卡牌作为下回合出牌依据
 
         if (game.getGamePlayerState(playerName).haveNoCard()) {
             eventPublisher.publishEvent(new GameOverEvent(roomID));
         }
-        movieIndex(game); // TODO 修复: 玩家出牌后下回合反馈信息提示还是该玩家出牌
+        movieIndex(game);
         eventPublisher.publishEvent(new SendCardEvent(roomID, card, playerName));
 
         switch (card.cardType()) {
@@ -127,11 +128,11 @@ public class GameService {
 
     public void pickFirstCard(String roomID) throws GameAbnormalException {
         Game game = games.get(roomID);
-        if (game.getPreviousCard() != null)
+        if (game.getPreCard() != null)
             throw new GameAbnormalException("初始卡牌已确定");
         GameCard firstCard = game.getDrawPile().removeFirst();
         game.getDiscardPile().add(firstCard);
-        game.setPreviousCard(firstCard);
+        game.setPreCard(firstCard);
         eventPublisher.publishEvent(new PickFirstCardEvent(roomID, game.getCurPlayerName()));
 
         log.debug("room " + roomID + ": first card is " + firstCard);
@@ -143,14 +144,9 @@ public class GameService {
         playerState.setSayUno(true);
     }
 
-    // 获取所有玩家的游戏状态
-    public Collection<GamePlayerState> getPlayerStates(String roomID) {
-        return games.get(roomID).getGamePlayerStates().values();
-    }
-
     // 获取指定玩家的游戏状态
-    public EnumGamePlayerStatus getPlayerState(String roomID, String playerName) {
-        return games.get(roomID).getGamePlayerState(playerName).getState();
+    public Game getGame(String roomID) {
+        return games.get(roomID);
     }
 
     // 将牌移入弃牌堆
@@ -171,36 +167,17 @@ public class GameService {
         log.debug("room " + game.getRoomID() + ": current turn " + game.getCurPlayerName() + ", next turn " + game.getNextPlayerName());
     }
 
-    // 在未抽取第一张牌时抛出异常
-    public void checkPreCard(String roomID) throws GameAbnormalException {
-        if (games.get(roomID).getPreviousCard() == null)
-            throw new GameAbnormalException("请抽取第一张牌");
+    public boolean appointedColor(String roomID, String color) {
+        Game game = games.get(roomID);
+        GameCard preCard = game.getPreCard();
+        try {
+            game.setPreCard(new GameCard(preCard.cardType(), EnumUnoCardColor.valueOf(color), preCard.cardID()));
+            return true;
+        } catch (IllegalArgumentException e) { // 枚举转换失败
+            return false;
+        }
     }
 
-    // 检查到卡牌不能打出后抛出异常
-    public void checkCard(String roomID, GameCard card)
-            throws GameAbnormalException {
-        // 若为万能牌或者颜色/图案与上一张牌一样才允许出牌
-        if (!isCardLegal(roomID, card))
-            throw new GameAbnormalException("卡牌颜色或图案不同");
-    }
-
-    // 检查卡牌是否可以打出
-    public boolean isCardLegal(String roomID, GameCard card) {
-        GameCard previousCard = games.get(roomID).getPreviousCard();
-        // 当卡牌满足 颜色相同 | 图案相同 | 万能牌 时可以打出
-        return card.cardType() == EnumUnoCardType.WILD ||
-                card.cardType() == EnumUnoCardType.ADD4 ||
-                card.cardType() == previousCard.cardType() ||
-                card.cardColor() == previousCard.cardColor();
-    }
-
-    // 检查是否为指定玩家回合
-    public void checkTurn(String roomID, String playerName)
-            throws GameAbnormalException {
-        if (!games.get(roomID).getCurGamePlayerState().getPlayerName().equals(playerName))
-            throw new GameAbnormalException("不是当前玩家回合");
-    }
 
     // 当前出牌不符合规则, 设置当前出牌玩家状态为retryOnTurns
     public void reTry(String roomID) {
@@ -209,20 +186,6 @@ public class GameService {
         eventPublisher.publishEvent(new SendCardEvent(roomID, null, playerState.getPlayerName()));
     }
 
-    // 获取游戏玩家信息集合
-    public Collection<GamePlayerInfo> getGamePlayerInfos(String roomID) {
-        return games.get(roomID).getGamePlayerInfos().values();
-    }
-
-    // 获取指定游戏玩家信息
-    public GamePlayerInfo getGamePlayerInfo(String roomID, String playerName) {
-        return games.get(roomID).getGamePlayerInfos().get(playerName);
-    }
-
-    // 获取指定游戏的上一张牌
-    public GameCard getPreviousCard(String roomID) {
-        return games.get(roomID).getPreviousCard();
-    }
 
     // 获取下回合出牌玩家的名称
     public String getNextPlayerName(String roomID) {
@@ -253,6 +216,51 @@ public class GameService {
                 .stream().mapToInt(GameCard::getScore).sum();
     }
 
+
+    // 在未抽取第一张牌时抛出异常
+    public void checkPreCard(String roomID) throws GameAbnormalException {
+        if (!isPickedFirstCard(roomID))
+            throw new GameAbnormalException("请抽取第一张牌");
+    }
+
+    public boolean isPickedFirstCard(String roomID) {
+        return games.get(roomID).getPreCard() != null;
+    }
+
+    public void checkPreCardColor(String roomID) throws GameAbnormalException {
+        if (isPreCardBlank(roomID))
+            throw new GameAbnormalException("请指定初始卡片颜色");
+    }
+
+    public boolean isPreCardBlank(String roomID) {
+        return games.get(roomID).getPreCard().cardColor() == EnumUnoCardColor.BLANK;
+    }
+
+    // 检查到卡牌不能打出后抛出异常
+    public void checkCard(String roomID, GameCard card)
+            throws GameAbnormalException {
+        // 若为万能牌或者颜色/图案与上一张牌一样才允许出牌
+        if (!isCardLegal(roomID, card))
+            throw new GameAbnormalException("卡牌颜色或图案不同");
+    }
+
+    // 检查卡牌是否可以打出
+    public boolean isCardLegal(String roomID, GameCard card) {
+        GameCard previousCard = games.get(roomID).getPreCard();
+        // 当卡牌满足 颜色相同 | 图案相同 | 万能牌 时可以打出
+        return card.cardType() == EnumUnoCardType.WILD ||
+                card.cardType() == EnumUnoCardType.ADD4 ||
+                card.cardType() == previousCard.cardType() ||
+                card.cardColor() == previousCard.cardColor();
+    }
+
+    // 检查是否为指定玩家回合
+    public void checkTurn(String roomID, String playerName)
+            throws GameAbnormalException {
+        if (!games.get(roomID).getCurGamePlayerState().getPlayerName().equals(playerName))
+            throw new GameAbnormalException("不是当前玩家回合");
+    }
+
     // 在玩家还有牌可以打出时抛出异常
     public void checkHaveCardToSend(String roomID, String playerName) throws GameAbnormalException {
         if (games.get(roomID).getGamePlayerInfo(playerName)
@@ -271,14 +279,14 @@ public class GameService {
         return games.get(roomID).getGamePlayerState(who).getSayUno();
     }
 
-    public GameService() {
-        games = new HashMap<>();
-    }
-
     // 在玩家手牌中不存在指定卡牌时抛出异常
     public void checkHaveCard(String roomID, String playerName, Integer cardID)
             throws GameAbnormalException {
         if (!games.get(roomID).getGamePlayerInfo(playerName).getHandCards().containsKey(cardID))
             throw new GameAbnormalException("卡牌不存在");
+    }
+
+    public GameService() {
+        games = new HashMap<>();
     }
 }

@@ -35,6 +35,21 @@ public class GameDataFetcher {
     private ConfigurableApplicationContext context;
 
     @DgsMutation
+    public Boolean appointedColor(String roomID, String color) throws
+            RoomAbnormalException, PlayerAbnormalException,
+            GameAbnormalException {
+        StpUtil.checkLogin();
+        String playerName = StpUtil.getLoginIdAsString();
+        roomService.checkRoomExists(roomID);
+        roomService.checkPlayerInRoom(roomID, playerName);
+        gameService.checkTurn(roomID, playerName);
+        gameService.checkPreCard(roomID);
+        if (!gameService.isPreCardBlank(roomID)) return false;
+
+        return gameService.appointedColor(roomID, color);
+    }
+
+    @DgsMutation
     public Boolean pickFirstCard(String roomID) throws
             RoomAbnormalException, PlayerAbnormalException,
             GameAbnormalException {
@@ -43,6 +58,7 @@ public class GameDataFetcher {
         roomService.checkRoomExists(roomID);
         roomService.checkPlayerInRoom(roomID, playerName);
         gameService.checkTurn(roomID, playerName);
+        if (gameService.isPickedFirstCard(roomID)) return false;
 
         gameService.pickFirstCard(roomID);
 
@@ -61,6 +77,7 @@ public class GameDataFetcher {
         roomService.checkPlayerInRoom(roomID, playerName);
         gameService.checkTurn(roomID, playerName);
         gameService.checkPreCard(roomID); // 检查是否已经完成抽取第一张牌操作
+        gameService.checkPreCardColor(roomID);
         gameService.checkHaveCard(roomID, playerName, (Integer) cardInput.get("cardID")); // 检查手牌中是否有这张牌
 
         GameCard card;
@@ -161,10 +178,11 @@ public class GameDataFetcher {
         return Flux.create(sink -> {
                     context.addApplicationListener((ApplicationListener<PickFirstCardEvent>) event -> {
                         if (roomID.equals(event.getSource())) {
+                            Game game = gameService.getGame(roomID);
                             sink.next(new GameTurnsFeedback(
-                                            gameService.getPlayerStates(roomID),
-                                            gameService.getGamePlayerInfo(roomID, playerName.toString()),
-                                            gameService.getPreviousCard(roomID),
+                                            game.getGamePlayerStates().values(),
+                                            game.getGamePlayerInfos().get(playerName.toString()),
+                                            game.getPreCard(),
                                             List.of(new GamePlayerAction(event.getPlayerName(), EnumGameAction.showFirstCard))
                                     )
                             );
@@ -175,13 +193,15 @@ public class GameDataFetcher {
 
                     context.addApplicationListener((ApplicationListener<SendCardEvent>) event -> {
                         if (roomID.equals(event.getSource())) {
+                            Game game = gameService.getGame(roomID);
                             ArrayList<GamePlayerAction> gamePlayerActions = new ArrayList<>();
                             gamePlayerActions.ensureCapacity(2); // 一张牌最多影响两名玩家, 出牌者与其下家
 
                             GameTurnsFeedback feedback = new GameTurnsFeedback(
-                                    gameService.getPlayerStates(roomID),
-                                    gameService.getGamePlayerInfo(roomID, playerName.toString()),
-                                    gameService.getPreviousCard(roomID), gamePlayerActions);
+                                    game.getGamePlayerStates().values(),
+                                    game.getGamePlayerInfos().get(playerName.toString()),
+                                    game.getPreCard(),
+                                    gamePlayerActions);
                             if (event.getSendCard() != null) { // 出牌失败返回null, 不做操作
                                 gamePlayerActions.add(new GamePlayerAction(event.getPlayerName(), EnumGameAction.sendCard));
                                 switch (event.getSendCard().cardType()) {
@@ -201,11 +221,12 @@ public class GameDataFetcher {
 
                     // 监听到出牌动作, 则告知所有玩家
                     context.addApplicationListener((ApplicationListener<DrawCardEvent>) event -> {
+                        Game game = gameService.getGame(roomID);
                         if (roomID.equals(event.getSource())) { // 忽略其他信号
                             sink.next(new GameTurnsFeedback(
-                                            gameService.getPlayerStates(roomID),
-                                            gameService.getGamePlayerInfo(roomID, playerName.toString()),
-                                            gameService.getPreviousCard(roomID),
+                                    game.getGamePlayerStates().values(),
+                                    game.getGamePlayerInfos().get(playerName.toString()),
+                                    game.getPreCard(),
                                             List.of(new GamePlayerAction(event.getPlayerName(), EnumGameAction.drawCard, event.getDrawCardCnt()))
                                     )
                             );

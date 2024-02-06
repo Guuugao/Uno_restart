@@ -41,7 +41,7 @@ public class Game {
     // 弃牌堆
     private LinkedList<GameCard> discardPile;
     // 上一张牌
-    private GameCard previousCard;
+    private GameCard preCard;
 
     // 记录是否所有玩家已订阅'gameWaitNextReaction'
     // 初始化为玩家数量, 减至0代表所有玩家已连接
@@ -71,7 +71,7 @@ public class Game {
         setGamePlayerStateByIndex(curPlayerIndex, EnumGamePlayerStatus.onTurns);
         setGamePlayerStateByIndex(getNextPlayerIndex(), EnumGamePlayerStatus.nextTurns);
 
-        previousCard = null;
+        preCard = null;
         playerConnectCnt = new AtomicInteger(playerCnt);
     }
 
@@ -88,11 +88,6 @@ public class Game {
     // 获取当前回合玩家游戏状态
     public GamePlayerState getCurGamePlayerState(){
         return gamePlayerStates.get(playerList.get(curPlayerIndex));
-    }
-
-    // 获取当前玩家游戏信息
-    public GamePlayerInfo getCurGamePlayerInfo(){
-        return gamePlayerInfos.get(getCurGamePlayerState().getPlayerName());
     }
 
     // 根据下标修改玩家状态

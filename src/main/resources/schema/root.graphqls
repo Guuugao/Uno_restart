@@ -36,6 +36,7 @@ type Mutation {
     roomPlayerUnready(roomID: ID!) : RoomFeedback!
 
     # 游玩内容
+    appointedColor(roomID: ID!, color: EnumUnoCardColor!): Boolean # 指定初始卡牌颜色
     pickFirstCard(roomID: ID!): Boolean # 由庄家掀开抽牌堆第一张牌, 确定出牌规则
     sendCard(roomID: ID!, cardInput: GameCardInput!): Boolean # 出牌
     noCardToSend(roomID: ID!): Boolean # 无牌可出, 抽一张牌, 若可出则立刻打出
